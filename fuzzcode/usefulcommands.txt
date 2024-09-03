@@ -1,0 +1,32 @@
+docker start -i fuzzwithsan
+docker exec -it fuzzwithsan /bin/bash 
+tcpdump -i any udp port 1194 -w raw-ser.pcap
+tcpdump -i any udp port 40000 -w raw-cli.pcap
+docker cp fuzzwithsan:/logs/raw.pcap ./
+
+# let's see what the --replay option can do 
+./udp-proxy-manualtest.py 
+./fuzz-udp-proxy.py --fuzzway=replace --howto=cli2s
+openvpn --config server-raw-fuzz.conf --verb 11 --connect-timeout 25 --replay-window 100 10 --hand-window 25
+openvpn --config client1-raw-fuzz.ovpn --connect-timeout 25 --hand-window 25
+openvpn --config client2-raw.ovpn --connect-timeout 25 --hand-window 25
+time read -n1
+
+./fuzz-udp-proxy.py --fuzzway=none --pkt=n --field=n > /617logs/fuzzout.log 
+
+tshark -r raw-ser.pcap -Y "frame.number==3" -V
+tshark -r ser_pcap_file.pcap
+tshark -r xxxxx.pcap -d udp.port==40000,openvpn
+tshark -r 1p1f-ack_v1-op-ser-raw-20240617-202741.pcap -Y "frame.number == 10" -V
+tshark -r cli_pcap_file.pcap -Y "frame.number==18" -V -d udp.port==40000,openvpn
+
+tcpdump -i eth0 host 10.30.1.2
+
+# to start server, client 2, get the sids of client2 connection, and start client1, fuzzing
+openvpn --config server-raw-fuzz.conf | tee /708specific/ser.log
+tcpdump -i any udp port 1194 -w /708specific/ser.pcap
+tshark -r ser.pcap -Y "frame.number==2" -V
+openvpn --config client2-raw.ovpn --verb 9 | tee /708specific/cli2.log
+
+./fuzz-udp-proxy.py --fuzzway=replace --pkt=c_ack4 --howto=cli2s
+openvpn --config client1-raw-fuzz.ovpn --verb 9 | tee /708specific/cli1.log

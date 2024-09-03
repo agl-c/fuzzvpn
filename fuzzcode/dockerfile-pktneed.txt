@@ -1,0 +1,14 @@
+vim
+less
+tcpdump
+python3
+pip
+# we use pip to install these
+# twisted 
+# scapy 
+# this need a extra yes as answer during install
+# tshark 
+netcat
+iperf3
+socat
+net-tools
