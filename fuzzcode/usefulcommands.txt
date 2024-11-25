@@ -1,8 +1,14 @@
 docker start -i fuzzwithsan
 docker exec -it fuzzwithsan /bin/bash 
 tcpdump -i any udp port 1194 -w raw-ser.pcap
+
+tcpdump -i any tcp port 1194 -w tcp-raw-ser.pcap
+docker cp priv-openvpn2.6.12:/openvpn/tcp-raw-ser.pcap ./
+
 tcpdump -i any udp port 40000 -w raw-cli.pcap
 docker cp fuzzwithsan:/logs/raw.pcap ./
+
+
 
 # let's see what the --replay option can do 
 ./udp-proxy-manualtest.py 

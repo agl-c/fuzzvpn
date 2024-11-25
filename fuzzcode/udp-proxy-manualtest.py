@@ -73,8 +73,24 @@ class OpenVPN(Packet):
     name = "OpenVPN"
     fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
                    XByteField("Message_Packet_ID_Array_Lenth", None),
+                   StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
+                    XLongField("Remote_Session_ID", None),
                    XIntField("Message_Packet_ID", None)]  # the Data field will be in Raw field, which is default
     
+
+# Client hard reset does not have remote sid
+class CHR(Packet):
+    name = "OpenVPN"
+    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+                   XByteField("Message_Packet_ID_Array_Lenth", None),
+                   StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
+                   XIntField("Message_Packet_ID", None)]  # the Data field will be in Raw field, which is default
+    
+class to_get_op_code(Packet):
+    name = "to_get_op_code"
+    fields_desc = [XByteField("Type", None)] # it's one byte, while 5 bits for opcode,  3 bits for keyid 
+
+
 
 class Forward(DatagramProtocol):
     def datagramReceived(self, data, addr):
@@ -93,7 +109,13 @@ class Forward(DatagramProtocol):
 
 
         if test_type == "openvpn":
-            openvpn_packet = OpenVPN(data)
+            to_get_op_code_pkt = to_get_op_code(data)
+            togetpacket_type = to_get_op_code_pkt.Type
+            toget_opcode = ( togetpacket_type & OPCODE_MASK) >> 3
+            if toget_opcode==7:
+                openvpn_packet = CHR(data)
+            else:
+                openvpn_packet = OpenVPN(data)
             # print("We first display the packet fields before modification")
             # openvpn_packet.show() 
 
@@ -145,14 +167,21 @@ class Forward(DatagramProtocol):
                 # and we can map concrete messgaes to the log in vpn
                 else:
                     control_v1_num+=1
+                    # if control_v1_num == 1:
+                    #     bytes_opacket += b"z" * 5000 # we create the very large control packet
+                    #     # print("we send a control v1 pkt with 5000bytes payload", len(bytes_opacket))
+                       
+
                     if control_v1_num <= allowed_control_v1_num or control_v1_num > resume_control_v1_num:
                         self.transport.write(bytes_opacket, (server_ip, 1194))
                        
+                        print("the allowed control v1 num:", allowed_control_v1_num)
                         print(f"sent the {control_v1_num}th control_v1 packet {len(bytes_opacket)} bytes to server: 1194")
                         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
                     # else we have reached the allowed_control_v1_num
                     else:
                         print("we delibrately stop sending control_v1 packets to monitor the log progress", control_v1_num, resume_control_v1_num)
+                        print("the message packet id is", openvpn_packet.Message_Packet_ID)
 
 
                 # if the pkt is Client_hard_reset_v2, we generate 100 such pkts to see the effects
@@ -271,9 +300,12 @@ def main():
 
     parser.add_argument("--num_replay", type=int, help="the num of replay", default=10000000)
     parser.add_argument("--allowed_control_v1_num", type=int, help="the threshold of allowed control_v1 pkt num", default=200000)
-    parser.add_argument("--resume_control_v1_num", type=int, help="the threshold of control_v1 pkt num to resume sending", default=20)
+    parser.add_argument("--resume_control_v1_num", type=int, help="the threshold of control_v1 pkt num to resume sending", default=20000)
 
     global args 
+    global allowed_control_v1_num
+    global num_replay
+    global resume_control_v1_num
     args = parser.parse_args()
     num_replay = args.num_replay
     allowed_control_v1_num = args.allowed_control_v1_num

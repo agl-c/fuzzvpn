@@ -1,5 +1,6 @@
 #!/bin/bash
-# PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway=none --pkt=none --field=none >"/822logs/fuzzout.log" 2>&1 &
+# PYTHONUNBUFFERED=1 ./fuzz-tcp-proxy.py 
+# --fuzzway=none --pkt=none --field=none >"/822logs/fuzzout.log" 2>&1 &
 
 tcpdump -i any udp port 1194 -w "/822logs/ser_pcap_file.pcap" &
 ser_tcpdump_pid=$!
