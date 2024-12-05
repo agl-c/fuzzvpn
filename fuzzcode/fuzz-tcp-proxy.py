@@ -35,11 +35,27 @@ server_port = 1194
 
 
 # below part is for manual testing
-# "control_v1" "client_restart_v2"; "ndss_restart" means the forced negotiation crash attack in the ndss 2022 paper
+# "control_v1" "client_restart_v2" "ack_c" "ack_s"
+# "ndss_restart" means the forced negotiation crash attack in the ndss 2022 paper
 replay_select = "none"
 
-allowed_pkt_num = 2
+# allowed_pkt_num = 3 will cause retransmission of M3(from client) and M4, M6 (from server)
+# allowed_pkt_num = 4 will cause retransmission of M4, M6 (from server) and the M5(ack) from client
+# allowed_pkt_num = 5(ack) will cause sending of M6 from server
+#  allowed_pkt_num = 6 will cause retransmission of M6 from server and sneding of M7, M8 from client
+# allowed_pkt_num =7(ack) will cause restransimission of pid=3 inside M6 from server, and sending of M8 from client
+# allowed_pkt_num =8 will cause restransimission of M8 from client, and sending of M9 and M10 from client
+# allowed_pkt_num =9(ack) will cause sending of M10 from server, and retransmission of pid=3 and pid =4 inside M8 from client
+# after reading the second part of M8, actually the first part of M10(tls sessuin ticekt) will be written out; since the left thing is Rc, Rs
+# allowed_pkt_num =10 will cause restransimission of M10 from server, and sending of M11, M12, M15(push request) from client
+# allowed_pkt_num =11 (ack) will cause restransimission of the second part of M10 from server, and sending of M12, M15(push request) from client
+# allowed_pkt_num =12 (ack) will cause sending of M13 and DATA messages from server, and sending of M15(push request) from client
+# allowed_pkt_num =13 will cause client sending M14 and DATA messages to server, and server retransmitting M13
+
+allowed_pkt_num = 10000
+resume_pkt_num = 16
 sent_pkt_num = 0
+pktnum = 0
 
 allowed_control_v1_num = 100 # we increase it from 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 sent_control_v1_num = 0
@@ -52,8 +68,8 @@ nowpkt = ""
 
 fuzzed_dic = ["original", "fuzzed"]
 s1_bunch_pkts = ["s_hello_1", "s_hello_2"]
-c1_bunch_pkts = ["ccs", "c_c1", "c_c2"]
-s2_bunch_pkts = ["s_c1", "s_c2", "s_c3"]
+c1_bunch_pkts = ["ccs", "c_c1", "c_c2"] # maybe we reorder the openvpn parts inside one tcp packet 
+s2_bunch_pkts = ["s_c1", "s_c2"] # here since the last control packet from server is not send together with the previous two, we consider only reordering the first two 
 # pkt_array=("hard_reset_c_v2" "hard_reset_s_v2" "c_hello" "s_hello_1" "s_hello_2" "ccs" "c_c1" "c_c2" "ack_v1" "s_c1" "s_c2" "s_c3" "data_v2")
 
 s1_saved_pkts = [None, None]
@@ -128,7 +144,9 @@ Slastapp_sent = "Slastapp_sent"
 # or shall we define 5-bit field and 3-bit field? 
 class to_get_op_code(Packet):
     name = "to_get_op_code"
-    fields_desc = [XByteField("Type", None)] # it's one byte, while 5 bits for opcode,  3 bits for keyid 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None)  # it's one byte, while 5 bits for opcode,  3 bits for keyid 
+                   ] 
 
 
 # the "raw" means this version is for no tls-auth or tls-crypt, i.e., no replay protection/MAC/wholy encrypted control messages
@@ -403,8 +421,18 @@ class TCPProxyProtocol(protocol.Protocol):
         """
         global sent_pkt_num
         global allowed_pkt_num
+        global resume_pkt_num
+        global pktnum
 
-        if sent_pkt_num < allowed_pkt_num:
+        fuzzeddata = data 
+        pktnum+=1
+
+        get2fields = to_get_op_code(data) 
+        getopcode = (get2fields.Type & OPCODE_MASK) >> 3
+        print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
+        
+
+        if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
             if self.proxy_to_server_protocol:
                 self.proxy_to_server_protocol.write(data)
             else:
@@ -413,7 +441,7 @@ class TCPProxyProtocol(protocol.Protocol):
             sent_pkt_num += 1
 
         else:
-            print("CLIENT => SERVER: we delibrately stop sending to monitor progress with sent_pkt_num", sent_pkt_num)
+            print("CLIENT => SERVER: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
  
     def write(self, data):
         self.transport.write(data)
@@ -448,13 +476,23 @@ class ProxyToServerProtocol(protocol.Protocol):
         """
         global sent_pkt_num
         global allowed_pkt_num
+        global resume_pkt_num
+        global pktnum
 
-        if sent_pkt_num < allowed_pkt_num:
+        fuzzeddata = data 
+        pktnum+=1
+
+        get2fields = to_get_op_code(data) 
+        getopcode = (get2fields.Type & OPCODE_MASK) >> 3
+        print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
+
+        
+        if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
             self.factory.server.write(data)
             print("SERVER => CLIENT, length:", len(data))
             sent_pkt_num += 1
         else:
-            print("SERVER => CLIENT: we delibrately stop sending to monitor progress with sent_pkt_num", sent_pkt_num)
+            print("SERVER => CLIENT: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
       
  
     def write(self, data):
@@ -463,6 +501,16 @@ class ProxyToServerProtocol(protocol.Protocol):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Parse the fuzzing selection")
+    parser.add_argument("--fuzzway", type=str, help="the selected fuzzing way", default="None")
+    parser.add_argument("--pkt", type=str, help="the selected pkt to fuzz", default="None")
+    parser.add_argument("--field", type=str, help="the selectd field to fuzz", default="None")
+    parser.add_argument("--howto", type=str, help="how to change the field value", default="None")
+    parser.add_argument("--bunch", type=str, help="the selected bunch of messages to reorder", default="None")
+
+    global args 
+    args = parser.parse_args()
+
     # Start the TCP forwarder (proxy)
     local_host = client_ip
     local_port = binding_port  # The port your proxy listens on

@@ -21,6 +21,7 @@ global server_ip
 server_ip = "172.17.0.3"
 
 global replay_select
+# this serves for active learning part 
 global allowed_control_v1_num
 global control_v1_num
 
