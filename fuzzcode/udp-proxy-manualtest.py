@@ -98,6 +98,10 @@ class Forward(DatagramProtocol):
         global control_v1_num
         global resume_control_v1_num
 
+        num_replay = args.num_replay
+        allowed_control_v1_num = args.allowed_control_v1_num
+        resume_control_v1_num = args.resume_control_v1_num
+
 
         if test_type == "openvpn":
             to_get_op_code_pkt = to_get_op_code(data)
@@ -208,10 +212,7 @@ class Forward(DatagramProtocol):
                                 bytes_per_second = total_bytes_sent / total_time  
                                 print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
                                 print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
-
-                        
-                   
-                                 
+      
 
                 if type_opcode == 0x04 and args.fuzzway == "replay" and args.pkt == "control_v1":
                     print("we got the p_control_v1 pkt from client")
@@ -303,9 +304,7 @@ def main():
 
     global args 
     args = parser.parse_args()
-    num_replay = args.num_replay
-    allowed_control_v1_num = args.allowed_control_v1_num
-    resume_control_v1_num = args.resume_control_v1_num
+   
 
     reactor.listenUDP(binding_port, Forward())
     reactor.run()

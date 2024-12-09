@@ -1,6 +1,11 @@
 #! /usr/bin/env python3
 large_value = 2**70
 
+# this python program reads a normal config file and generates various fuzzed malformed config files 
+# after that, the directory including the fuzzed configs will be tested by the script tcp-testconfig.sh
+# after that, test logs will be generated and analyse-log.sh will analyse them and generate report 
+
+
 def modify_variable_in_file(input_file, output_file, variable_name, fuzz_way):
     with open(input_file, 'r') as infile:
         lines = infile.readlines()
