@@ -64,32 +64,36 @@ sent_control_v1_num = 0
 # when a P_CONTROL_V1 pkt comes, we remember its order for the client / server respectively
 ctr_from_c = ""
 ctr_from_s = ""
-nowpkt = ""
+# nowpkt = ""
 
 fuzzed_dic = ["original", "fuzzed"]
-s1_bunch_pkts = ["s_hello_1", "s_hello_2"]
+s1_bunch_pkts = ["s_hello1", "sh2in1"]
 c1_bunch_pkts = ["ccs", "c_c1", "c_c2"] # maybe we reorder the openvpn parts inside one tcp packet 
 s2_bunch_pkts = ["s_c1", "s_c2"] # here since the last control packet from server is not send together with the previous two, we consider only reordering the first two 
 # pkt_array=("hard_reset_c_v2" "hard_reset_s_v2" "c_hello" "s_hello_1" "s_hello_2" "ccs" "c_c1" "c_c2" "ack_v1" "s_c1" "s_c2" "s_c3" "data_v2")
 
-s1_saved_pkts = [None, None]
+s1_saved_pkts = [None, None, None]
 c1_saved_pkts = [None, None, None]
-s2_saved_pkts = [None, None, None]
+s2_saved_pkts = [None, None]
 
-c_saved_acks = [None, None, None, None] # in total 4 acks from client
+c_saved_acks = [None, None, None, None, None] # in total 5 acks from client
 s_saved_acks = [None] # in total 1 ack from server
-# 10, 3210, 4321, 5432
-c_ack_mid_arr =[b'\x00\x00\x00\x01\x00\x00\x00\x00', b'\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00',
-b'\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01', b'\x00\x00\x00\x05\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02']
-# 21, 
-s_ack_mid_arr = [b'\x00\x00\x00\x02\x00\x00\x00\x01']
+# 10, 210, 4321, 5432, 6543
+c_ack_mid_arr =[b'\x00\x00\x00\x01\x00\x00\x00\x00', b'\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00',
+b'\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01', b'\x00\x00\x00\x05\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02',
+b'\x00\x00\x00\x06\x00\x00\x00\x05\x00\x00\x00\x04\x00\x00\x00\x03']
+# 210
+s_ack_mid_arr = [b'\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00']
 # nowack = ""
 
-# 10,3210,4321,5432, 21,  0,1, 210, 321 
-mid_arr = [b'\x00\x00\x00\x01\x00\x00\x00\x00', b'\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00',
+# all the valid mid_arr's in a normal connection 
+# 10,210,4321,5432,6543,   0,3210, 543210
+mid_arr = [b'\x00\x00\x00\x01\x00\x00\x00\x00', b'\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00',
 b'\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01', b'\x00\x00\x00\x05\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02',
-b'\x00\x00\x00\x02\x00\x00\x00\x01', b'\x00\x00\x00\x00', b'\x00\x00\x00\x01',  b'\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00',
-b'\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01'
+b'\x00\x00\x00\x06\x00\x00\x00\x05\x00\x00\x00\x04\x00\x00\x00\x03',
+b'\x00\x00\x00\x00', 
+b'\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00',
+b'\x00\x00\x00\x05\x00\x00\x00\x04\x00\x00\x00\x03\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x00'
 ]
 
 
@@ -118,7 +122,7 @@ opcode_array = [P_CONTROL_HARD_RESET_CLIENT_V2, P_CONTROL_HARD_RESET_SERVER_V2, 
 OPCODE_MASK = 0b11111000
 KEYID_MASK = 0b00000111 
 
-mpid_array = [0, 1, 2, 3, 4, 5]
+mpid_array = [0, 1, 2, 3, 4, 5, 6]
 tls_ctype_array = [22, 20, 23, 21, 24] # handshake, ccs, and application data; alert(21) and heartbeat(24)
 tls_v_array = [0x301, 0x302, 0x303, 0x304] # tls 1.0~tls1.3
 tls_htype_array = [0, 1, 2, 4, 5, 6, 8, 11, 12 ,13, 14, 15, 16, 20] # tls handshake record types 
@@ -155,7 +159,8 @@ class to_get_op_code(Packet):
 # client hard reset
 class OpenVPN_raw_c_hr(Packet):
     name = "OpenVPN_raw_c_hr"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     XIntField("Message_Packet_ID", None)
                     ]  # the Data field will be in Raw field, which is default
@@ -163,7 +168,8 @@ class OpenVPN_raw_c_hr(Packet):
 # server hard reset 
 class OpenVPN_raw_s_hr(Packet):
     name = "OpenVPN_raw_s_hr"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
@@ -176,7 +182,8 @@ class OpenVPN_raw_s_hr(Packet):
 # the class below serves for help determining using which detailed class to dissect
 class OpenVPN_raw_ctr(Packet):
     name = "OpenVPN_raw_ctr"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
@@ -190,7 +197,8 @@ class OpenVPN_raw_ctr(Packet):
 # client hello
 class OpenVPN_raw_ctr_ch(Packet):
     name = "OpenVPN_raw_ctr_ch"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
@@ -215,21 +223,22 @@ class OpenVPN_raw_ctr_ch(Packet):
                     StrLenField("Compression_Methods", "", length_from=lambda pkt: pkt.Compression_Methods_Length),
                     XShortField("Extensions_Length", None),  # not sure about the format allowed in ""
                     # below are some extensions
-                    StrFixedLenField("Extension_ec_point_formats", "", length=8),
-                    StrFixedLenField("Extension_supported_groups", "", length=16),
-                    StrFixedLenField("Extension_encrypt_then_mac", "", length=4),
-                    StrFixedLenField("Extension_extended_master_secret", "", length=4),
-                    StrFixedLenField("Extension_signature_algorithms", "", length=52),
-                    StrFixedLenField("Extension_supported_versions", "", length=13),
-                    StrFixedLenField("Extension_psk_key_exchange_modes", "", length=6),
-                    StrFixedLenField("Extension_key_share", "", length=42)
+                    StrFixedLenField("Extension_ec_point_formats", "", length=8)
+                    # StrFixedLenField("Extension_supported_groups", "", length=16),
+                    # StrFixedLenField("Extension_encrypt_then_mac", "", length=4),
+                    # StrFixedLenField("Extension_extended_master_secret", "", length=4),
+                    # StrFixedLenField("Extension_signature_algorithms", "", length=52),
+                    # StrFixedLenField("Extension_supported_versions", "", length=13),
+                    # StrFixedLenField("Extension_psk_key_exchange_modes", "", length=6),
+                    # StrFixedLenField("Extension_key_share", "", length=42)
                     # not sure about the rest JA4, JA4_r, JA3 Fullstring, JA3 stuff
                     ]
 
 # server hello, change cipher spec, 2 app data, and segment data
 class OpenVPN_raw_ctr_sh(Packet):
     name = "OpenVPN_raw_ctr_sh"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
@@ -285,7 +294,8 @@ class OpenVPN_raw_ctr_sh(Packet):
 # P_CONTROL_V1 continuation data 
 class OpenVPN_raw_ctr_ctd(Packet):
     name = "OpenVPN_raw_ctr_ctd"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
@@ -299,7 +309,8 @@ class OpenVPN_raw_ctr_ctd(Packet):
 # P_ACK_V1
 class OpenVPN_raw_ack1(Packet):
     name = "OpenVPN_raw_ack1"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
@@ -310,8 +321,9 @@ class OpenVPN_raw_ack1(Packet):
 # change cipher spec from client and segment data
 class OpenVPN_raw_ctr_ccs(Packet):
     name = "OpenVPN_raw_ctr_ccs"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
-                   XByteField("Message_Packet_ID_Array_Lenth", None),
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
+                    XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4 * pkt.Message_Packet_ID_Array_Lenth),
                     XLongField("Remote_Session_ID", None),
@@ -328,10 +340,46 @@ class OpenVPN_raw_ctr_ccs(Packet):
                     ]
 
 
+# P_CONTROL_V1 TLS 3 application data in one pkt
+class OpenVPN_raw_ctr_3app(Packet):
+    name = "OpenVPN_raw_ctr_3app"
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
+                    XByteField("Message_Packet_ID_Array_Lenth", None),
+                    # 1-->4 bytes; 2---> 8bytes long; 3---->12 bytes long
+                    StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4*pkt.Message_Packet_ID_Array_Lenth),
+                    XLongField("Remote_Session_ID", None),
+                    XIntField("Message_Packet_ID", None),
+
+                    # TLS Record Layer, application data 
+                    # next is the first application data
+                    XByteField("TLS_Content_type", None),  # Application Data (23)
+                    XShortField("TLS_Version", None), # e.g. TLS 1.2 0x0303
+                    XShortField("Record_Length", None),  
+                    StrLenField("Encrypted_Application_Data1", "", length_from=lambda pkt: pkt.Record_Length),
+
+                    # TLS record layer
+                    # next is the second application data
+                    XByteField("TLS_Content_type2", None),  # Application Data (23)
+                    XShortField("TLS_Version_ead2", None), # e.g. TLS 1.2 0x0303
+                    XShortField("Record_Length_ead2", None),  
+                    StrLenField("Encrypted_Application_Data2", "", length_from=lambda pkt: pkt.Record_Length_ead2),
+
+                    # TLS record layer
+                    # next is the third application data
+                    XByteField("TLS_Content_type3", None),  # Application Data (23)
+                    XShortField("TLS_Version_ead3", None), # e.g. TLS 1.2 0x0303
+                    XShortField("Record_Length_ead3", None),  
+                    StrLenField("Encrypted_Application_Data3", "", length_from=lambda pkt: pkt.Record_Length_ead3)
+                   
+                    ]
+
+
 # P_CONTROL_V1 TLS 2 application data in one pkt
 class OpenVPN_raw_ctr_2app(Packet):
     name = "OpenVPN_raw_ctr_2app"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long; 3---->12 bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4*pkt.Message_Packet_ID_Array_Lenth),
@@ -358,7 +406,8 @@ class OpenVPN_raw_ctr_2app(Packet):
 # P_CONTROL_V1 TLS 1 application data in one pkt
 class OpenVPN_raw_ctr_1app(Packet):
     name = "OpenVPN_raw_ctr_1app"
-    fields_desc = [ XByteField("Type", None), XLongField("Session_ID", None), 
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None), XLongField("Session_ID", None), 
                     XByteField("Message_Packet_ID_Array_Lenth", None),
                     # 1-->4 bytes; 2---> 8bytes long; 3---->12 bytes long
                     StrLenField("Packet_ID_Array", "", length_from = lambda pkt: 4* pkt.Message_Packet_ID_Array_Lenth),
@@ -376,8 +425,9 @@ class OpenVPN_raw_ctr_1app(Packet):
 # P_DATA_V2
 class OpenVPN_raw_data(Packet):
     name = "OpenVPN_raw_data"
-    fields_desc = [ XByteField("Type", None),
-                    StrFixedLenField("Peer_ID", "", length=3)
+    fields_desc = [ ShortField("plen", None), # 2-byte expresses the openvpn packet length, the field is unique for TCP version 
+                    XByteField("Type", None),
+                    XStrFixedLenField("Peer_ID", "", length=3) # might be 0, so we display the x way 
                     # the below raw filed part is simply data, i.e., encrypted app data in the vpn data channel 
                     ]
 
@@ -423,25 +473,450 @@ class TCPProxyProtocol(protocol.Protocol):
         global allowed_pkt_num
         global resume_pkt_num
         global pktnum
+        global c1_saved_pkts
+        nowpkt = "" # we have to reset the nowpkt for each new pkt 
 
+        data1 = None
+        data2 = None
+        data3 = None
         fuzzeddata = data 
         pktnum+=1
 
         get2fields = to_get_op_code(data) 
         getopcode = (get2fields.Type & OPCODE_MASK) >> 3
-        print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
-        
+        print("Before parsing, data len: ", len(data), ", openvpn packet len: ", get2fields.plen, " and opcode ", getopcode)
 
-        if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
-            if self.proxy_to_server_protocol:
-                self.proxy_to_server_protocol.write(data)
+        # decide if this pkt has multiple openvpn pkts inside
+        if len(data) > get2fields.plen+2:
+            # print("this pkt has multiple openvpn pkts inside")
+            # we have to dissect the data into multiple pkts
+            data1 = data[:get2fields.plen+2]
+            data2 = data[get2fields.plen+2:]
+            get2fields2 = to_get_op_code(data2)
+            getopcode2 = (get2fields2.Type & OPCODE_MASK) >> 3
+            print("the second openvpn packet len", get2fields2.plen, " and opcode", getopcode2)
+
+            if get2fields.plen + get2fields2.plen + 4 == len(data):
+                print("the dissection is done with 2 sub pkts")
             else:
-                self.buffer = data
-            print("CLIENT => SERVER, length:", len(data))
-            sent_pkt_num += 1
+                data3 = data[(get2fields.plen + get2fields2.plen + 4):]
+                get2fields3 = to_get_op_code(data3)
+                getopcode3 = (get2fields3.Type & OPCODE_MASK) >> 3
+
+                # we should also update the data2 part 
+                data2 = data[get2fields.plen + 2:get2fields.plen + get2fields2.plen + 4]  
+
+                print("the third openvpn packet len", get2fields3.plen, " and opcode", getopcode3)
+                if get2fields.plen + get2fields2.plen + get2fields3.plen + 6 == len(data):
+                    print("the dissection is done with 3 sub pkts")
+                # in case the M7 and M8 are together in one pkt
+                else:
+                    data4 = data[(get2fields.plen + get2fields2.plen + get2fields3.plen + 6):]
+                    get2fields4 = to_get_op_code(data4)
+                    getopcode4 = (get2fields4.Type & OPCODE_MASK) >> 3
+                    data3 = data[(get2fields.plen + get2fields2.plen + 4):get2fields.plen + get2fields2.plen + get2fields3.plen + 6]
+                    print("the fourth openvpn packet len", get2fields4.plen, " and opcode", getopcode4)
+                    print("the dissection is done with 4 sub pkts")
+
+        if getopcode == P_CONTROL_HARD_RESET_CLIENT_V2:
+            openvpn_packet = OpenVPN_raw_c_hr(data)
+            nowpkt = "hard_reset_c_v2"
+
+        elif getopcode == P_ACK_V1: # 5 kinds of acks
+            openvpn_packet = OpenVPN_raw_ack1(data)
+            if openvpn_packet.Packet_ID_Array == c_ack_mid_arr[0]:
+                nowpkt = "c_ack1"
+            elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[1]:
+                nowpkt = "c_ack2"
+            elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[2]:
+                nowpkt = "c_ack3"
+            elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[3]:
+                nowpkt = "c_ack4"
+            elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[4]:
+                nowpkt = "c_ack5"
+            
+        elif getopcode == P_DATA_V2:
+            openvpn_packet = OpenVPN_raw_data(data)
+            nowpkt = "data_v2"
+
+        elif getopcode == P_CONTROL_V1:
+            control_packet = OpenVPN_raw_ctr(data)
+            if control_packet.TLS_Content_type == 22: # handshake, so client hello
+                openvpn_packet = OpenVPN_raw_ctr_ch(data)
+                nowpkt = "c_hello"
+
+            elif control_packet.TLS_Content_type == 20: # change cipher spec
+                # this should be 3 packets inside one, we deal with data1, data2,data3 separately
+                # if all the three exist 
+                if data1 and data2 and data3: 
+                    openvpn_packet1 = OpenVPN_raw_ctr_ccs(data1)
+                    # we parse like this since segmentation happens which prevents us from parsing the logically following application records 
+                    openvpn_packet2 = OpenVPN_raw_ctr(data2) 
+                    openvpn_packet3 = OpenVPN_raw_ctr(data3) 
+                    nowpkt = "3in1"
+                else:
+                    # should not go to this branch 
+                    print("Not 3 in one, maybe only the change cipher spec packet")
+                    openvpn_packet = control_packet 
+
+            else:
+                # might be application data? 
+                openvpn_packet = OpenVPN_raw_ctr(data)
+                   
+
+        # now we do the fuzzing part 
+        # first, for 1p1f, we confirm we should fuzz the current pkt, either directly the same pkt or we can find the target pkt in the 3 in 1 pkt
+        if args.fuzzway == "1p1f" and (nowpkt == args.pkt or (nowpkt == "3in1" and args.pkt in ["ccs", "c_c1", "c_c2"])):
+            # for 3 in 1 case, we first locate the target pkt 
+            if args.pkt == "ccs" and data1:
+                openvpn_packet = openvpn_packet1 
+            elif args.pkt == "c_c1" and data2:
+                openvpn_packet = openvpn_packet2
+            elif args.pkt == "c_c2" and data3:
+                openvpn_packet = openvpn_packet3 
+            else:
+                # should be only one pkt 
+                pass 
+
+            if args.field=="op":
+                # ensure choosing a different op_code
+                old_opcode = (openvpn_packet.Type & OPCODE_MASK) >> 3
+                old_keyid = openvpn_packet.Type & KEYID_MASK
+                new_opcode = old_opcode
+
+                if args.howto=="rand_vali": # random value from the valid value list
+                    while new_opcode==old_opcode: 
+                        new_opcode = random.choice(opcode_array)
+                elif args.howto=="rand_any": # random value which occupies 5bit, i.e., from [0, 31]
+                    while new_opcode==old_opcode: 
+                        new_opcode = random.randint(0, 31)
+                elif args.howto=="rand_zero":
+                    new_opcode = 0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                new_type = (new_opcode << 3) | old_keyid
+                openvpn_packet.Type = new_type
+                print("the new opcode:", new_opcode, " keyid:", old_keyid, " type:", openvpn_packet.Type)
+                fuzzed = True
+
+            elif args.field == "sid":
+                old_sid = openvpn_packet.Session_ID
+                new_sid = old_sid
+                if args.howto== "rand_any": # random value which occupies 8bytes, i.e., 64bits
+                    while new_sid == old_sid: 
+                        new_sid = random.getrandbits(64)
+                elif args.howto=="rand_zero":
+                    new_sid = 0
+                else: 
+                    print("~~~~~~~~~~~ unknown howto method ~~~~~~~~~~~~~")
+                openvpn_packet.Session_ID = new_sid
+
+            elif args.field == "sid_r":
+                old_sid_r = openvpn_packet.Remote_Session_ID
+                new_sid_r = old_sid_r
+                
+                if args.howto== "rand_any": # random value which occupies 8bytes, i.e., 64bits
+                    while new_sid_r == old_sid_r: 
+                        new_sid_r = random.getrandbits(64)
+                elif args.howto=="rand_zero":
+                    new_sid_r = 0 
+                else: 
+                    print("~~~~~~~~~~~ unknown howto method ~~~~~~~~~~~~~")
+                openvpn_packet.Remote_Session_ID = new_sid_r
+
+            elif args.field=="mid_array": # ack-target experiments
+                # print(" ~~~~~~~~~~~~~~~~~~~~~~ it's mid_array experiment ~~~~~~~~~~~~~")
+                old_mid_array = openvpn_packet.Packet_ID_Array
+                new_mid_array = old_mid_array
+                old_mid_arrlen = openvpn_packet.Message_Packet_ID_Array_Lenth
+
+                if args.howto == "rand_vali":
+                    while new_mid_array==old_mid_array:
+                        new_mid_array = random.choice(mid_arr)
+                elif args.howto == "rand_any":
+                    while new_mid_array==old_mid_array:
+                        new_mid_array = random.getrandbits(32).to_bytes(4*old_mid_arrlen, 'big')
+                elif args.howto == "rand_zero":
+                    new_mid_array = b"\x00\x00\x00\x00"
+
+                elif args.howto=="rm_some": # for now, we change the 2nd element to be 0
+                    mutable_mid_array = bytearray(old_mid_array)
+                    mutable_mid_array[4:8] = b'\x00\x00\x00\x00'
+                    new_mid_array = bytes(mutable_mid_array)
+                elif args.howto=="large":
+                    mutable_mid_array = bytearray(old_mid_array)
+                    mutable_mid_array[0:4] = b'\x00\x00\x00\x09' # for now, we replace the 1st element to be 9
+                    new_mid_array = bytes(mutable_mid_array)
+
+                openvpn_packet.Packet_ID_Array = new_mid_array
+                openvpn_packet.Message_Packet_ID_Array_Lenth = int(len(new_mid_array)/4)
+                print(f"we dispaly the {args.howto} fuzzed {nowpkt} packet:")
+                openvpn_packet.show()
+                fuzzed = True
+
+            elif args.field=="mpid":
+                # ensure a different mpid
+                old_mpid=openvpn_packet.Message_Packet_ID
+                new_mpid=old_mpid
+
+                if args.howto=="rand_vali":
+                    while new_mpid==old_mpid:
+                        new_mpid = random.choice(mpid_array)
+                elif args.howto=="rand_any":
+                    while new_mpid==old_mpid:
+                        new_mpid = random.randint(0, 0xFFFFFFFF) # random 4 byte int
+                elif args.howto=="rand_zero":
+                    new_mpid=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.Message_Packet_ID=new_mpid
+                print("the new Message_Packet_ID:", new_mpid)
+                fuzzed = True
+
+            elif args.field=="tls_ctype":
+                old_ctype=openvpn_packet.TLS_Content_type
+                new_ctype=old_ctype
+
+                if args.howto=="rand_vali":
+                    while new_ctype==old_ctype:
+                        new_ctype=random.choice(tls_ctype_array)
+                elif args.howto=="rand_any":
+                    while new_ctype==old_ctype:
+                        new_ctype=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_ctype=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.TLS_Content_type=new_ctype
+                print("the new TLS_Content_type:", new_ctype)
+                fuzzed=True
+
+            elif args.field=="tls_v":
+                old_tlsv=openvpn_packet.TLS_Version
+                new_tlsv=old_tlsv
+
+                if args.howto=="rand_vali":
+                    while new_tlsv==old_tlsv:
+                        new_tlsv=random.choice(tls_v_array)
+                elif args.howto=="rand_any":
+                    while new_tlsv==old_tlsv:
+                        new_tlsv=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_tlsv=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.TLS_Version=new_tlsv
+                print("the new TLS_Version:", new_tlsv)
+                fuzzed=True
+
+            elif args.field=="tls_htype":
+                old_htype=openvpn_packet.Handshake_Type
+                new_htype=old_htype
+
+                if args.howto=="rand_vali":
+                    while new_htype==old_htype:
+                        new_htype=random.choice(tls_htype_array)
+                elif args.howto=="rand_any":
+                    while new_htype==old_htype:
+                        new_htype=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_htype=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.Handshake_Type=new_htype
+                print("the new Handshake_Type:", new_htype)
+                fuzzed=True
+
+            elif args.field=="hs_v":
+                old_hsv=openvpn_packet.HS_Version
+                new_hsv=old_hsv
+
+                if args.howto=="rand_vali":
+                    while new_hsv==old_hsv:
+                        new_hsv=random.choice(hs_v_array)
+                elif args.howto=="rand_any":
+                    while new_hsv==old_hsv:
+                        new_hsv=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_hsv=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.HS_Version=new_hsv
+                print("the new HS_Version:", new_hsv)
+                fuzzed=True
+
+            # howto can be rand_any or rand_zero
+            elif args.field=="ccs": # 
+                old_ccs=openvpn_packet.Change_Cipher_Spec_Message
+                new_ccs=old_ccs
+                if args.howto=="rand_any":
+                    while new_ccs==old_ccs:
+                        new_ccs = random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_ccs=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Change_Cipher_Spec_Message=new_ccs
+                print("the new Change_Cipher_Spec_Message:", new_ccs)
+                fuzzed = True
+
+            elif args.field=="rlen":
+                old_rlen=openvpn_packet.Record_Length
+                new_rlen=old_rlen
+                if args.howto=="rand_any":
+                    while new_rlen==old_rlen:
+                        new_rlen=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_rlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Record_Length=new_rlen
+                print("the new Record_Length:", new_rlen)
+                fuzzed = True
+
+            elif args.field=="hslen":
+                old_hslen=openvpn_packet.HS_Length
+                new_hslen=old_hslen
+                if args.howto=="rand_any":
+                    while new_hslen==old_hslen:
+                        new_hslen=random.randint(0, 0xffffff) # random 3-byte int
+                elif args.howto=="rand_zero":
+                    new_hslen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.HS_Length=new_hslen
+                print("the new HS_Length:", new_hslen)
+                fuzzed = True
+
+            elif args.field=="tls_slen":
+                old_sidlen=openvpn_packet.Session_ID_Length
+                new_sidlen=old_sidlen
+                if args.howto=="rand_any":
+                    while new_sidlen==old_sidlen:
+                        new_sidlen=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_sidlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Session_ID_Length=new_sidlen
+                print("the new Session_ID_Length:", new_sidlen)
+                fuzzed = True
+
+            elif args.field=="tls_cslen":
+                old_cslen=openvpn_packet.Cipher_Suites_Length
+                new_cslen=old_cslen
+                if args.howto=="rand_any":
+                    while new_cslen==old_cslen:
+                        new_cslen=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_cslen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Cipher_Suites_Length=new_cslen
+                print("the new Cipher_Suites_Length:", new_cslen)
+                fuzzed = True
+            
+            elif args.field=="tls_cmlen":
+                old_cmlen=openvpn_packet.Compression_Methods_Length
+                new_cmlen=old_cmlen
+                if args.howto=="rand_any":
+                    while new_cmlen==old_cmlen:
+                        new_cmlen=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_cmlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Compression_Methods_Length=new_cmlen
+                print("the new Compression_Methods_Length:", new_cmlen)
+                fuzzed = True
+
+            elif args.field=="tls_extlen":
+                old_extlen=openvpn_packet.Extensions_Length
+                new_extlen=old_extlen
+                if args.howto=="rand_any":
+                    while new_extlen==old_extlen:
+                        new_extlen=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_extlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Extensions_Length=new_extlen
+                print("the new Extensions_Length:", new_extlen)
+                fuzzed = True
+        
+            # now we should use openvpn_packet to replace the original pkt which is 3 in one
+            if args.pkt == "ccs":
+                openvpn_packet1 = openvpn_packet
+            elif args.pkt == "c_c1":
+                openvpn_packet2 = openvpn_packet
+            elif args.pkt == "c_c2":
+                openvpn_packet3 = openvpn_packet
+            else:
+                # no need to replace 
+                pass 
+
+        # now the reorder part fuzzing, prepare stuff from client to reorder, i.e., only c1 bunch which is 3 in 1 
+        elif args.fuzzway=="reorder" and args.bunch=="c1" and nowpkt=="3in1":
+            if data1 and data2 and data3:
+                c1_saved_pkts[0]=openvpn_packet1
+                c1_saved_pkts[1]=openvpn_packet2
+                c1_saved_pkts[2]=openvpn_packet3
+            else:
+                # should not go to this branch
+                print("we should not go to this branch")
+                sys.exit(1)
+
+
+        # since fuzzing is done, now prepare the bytes to be sent
+        # print("~~~~~~~~~~~~~~~~ since fuzzing is done, now prepare the bytes to be sent and show packet ~~~~~~~~~~~~~~~~~")
+        if data1==None: # not multiple in one pkt
+            # openvpn_packet.show()
+            tosend = bytes(openvpn_packet) 
+        elif data1 and data2 and data3: # client side should only have 3 in one pkt if multiple in one pkt
+            # openvpn_packet1.show()
+            # openvpn_packet2.show()
+            # openvpn_packet3.show()
+
+            if args.fuzzway=="reorder" and args.bunch=="c1":
+                order_array = [0,1,2]
+                permutations = list(itertools.permutations(order_array))
+                permutations.remove(tuple(order_array)) # remove the original order
+                chosen_permutation = random.choice(permutations) # choose a random reordered array
+                print(f"************** the chosen reordered index array for c1 bunch is {chosen_permutation} ****************")
+    
+                tosend = bytes(c1_saved_pkts[chosen_permutation[0]]) + bytes(c1_saved_pkts[chosen_permutation[1]]) + bytes(c1_saved_pkts[chosen_permutation[2]])
+                print("**************** reordering ccs, c_c1, c_c2 done *******************")
+
+            else:
+                tosend = bytes(openvpn_packet1) + bytes(openvpn_packet2) + bytes(openvpn_packet3)   
 
         else:
-            print("CLIENT => SERVER: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
+            print("we should not go to this branch")
+            sys.exit(1) 
+
+        # below, just sending logic, send or not.
+        if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
+            if self.proxy_to_server_protocol:
+                self.proxy_to_server_protocol.write(tosend)
+            else:
+                self.buffer = tosend 
+            print("CLIENT => SERVER, data length:", len(tosend))
+            sent_pkt_num += 1
+        else:
+            print("CLIENT => SERVER: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(tosend))
  
     def write(self, data):
         self.transport.write(data)
@@ -478,21 +953,463 @@ class ProxyToServerProtocol(protocol.Protocol):
         global allowed_pkt_num
         global resume_pkt_num
         global pktnum
+        global s1_saved_pkts
+        global s2_saved_pkts
 
+        nowpkt = "" # we have to reset the nowpkt for each new pkt 
+
+        data1 = None
+        data2 = None
+        data3 = None
         fuzzeddata = data 
         pktnum+=1
 
         get2fields = to_get_op_code(data) 
         getopcode = (get2fields.Type & OPCODE_MASK) >> 3
-        print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
+        print("Before parsing, data len: ", len(data), ", openvpn packet len: ", get2fields.plen, " and opcode ", getopcode)
 
-        
-        if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
-            self.factory.server.write(data)
-            print("SERVER => CLIENT, length:", len(data))
-            sent_pkt_num += 1
+        # decide if this pkt has multiple openvpn pkts inside
+        if len(data) > get2fields.plen+2:
+            print("this pkt has multiple openvpn pkts inside")
+            # we have to dissect the data into multiple pkts
+            data1 = data[:get2fields.plen+2]
+            data2 = data[get2fields.plen+2:]
+            get2fields2 = to_get_op_code(data2)
+            getopcode2 = (get2fields2.Type & OPCODE_MASK) >> 3
+            print("the second openvpn packet len", get2fields2.plen, " and opcode", getopcode2)
+
+            if get2fields.plen + get2fields2.plen + 4 == len(data):
+                print("the dissection is done with 2 sub pkts")
+            else:
+                data3 = data[(get2fields.plen + get2fields2.plen + 4):]
+                get2fields3 = to_get_op_code(data3)
+                getopcode3 = (get2fields3.Type & OPCODE_MASK) >> 3
+                print("the third openvpn packet len", get2fields3.plen, " and opcode", getopcode3)
+                print("the dissection is done with 3 sub pkts")
+
         else:
-            print("SERVER => CLIENT: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
+            print("this pkt has only one openvpn pkt inside")
+            
+        if getopcode == P_CONTROL_HARD_RESET_SERVER_V2:
+            openvpn_packet = OpenVPN_raw_s_hr(data)
+            nowpkt = "hard_reset_s_v2" 
+
+        elif getopcode == P_ACK_V1: # 1 kind of ack
+            openvpn_packet = OpenVPN_raw_ack1(data) 
+            nowpkt = "s_ack"
+            # in case ack and ctr2in1 together
+            if data1 and data2 and data3:
+                openvpn_packet1 = OpenVPN_raw_ctr(data2)
+                openvpn_packet2 = OpenVPN_raw_ctr(data3)
+                nowpkt = "ctr2in1"
+
+        elif getopcode == P_DATA_V2:
+            openvpn_packet = OpenVPN_raw_data(data)
+            nowpkt = "data_v2"
+
+        elif getopcode == P_CONTROL_V1:
+            # might be 1 in 1 pkt, 2 in 1 pkt, 2 in 1 pkt, we can use mid to differ?
+            control_packet = OpenVPN_raw_ctr(data) 
+            if control_packet.TLS_Content_type == 22: # handshake, so server hello
+                openvpn_packet = OpenVPN_raw_ctr_sh(data) 
+                nowpkt = "s_hello1"
+            elif control_packet.Message_Packet_ID == 2:
+                # should be the first 2 in one; actually sever hello continual pkt where segmentation happens 
+                if data1 and data2:
+                    openvpn_packet1 = OpenVPN_raw_ctr(data1)
+                    openvpn_packet2 = OpenVPN_raw_ctr(data2)
+                    nowpkt = "sh2in1"
+                else:
+                    openvpn_packet = OpenVPN_raw_ctr(data)
+
+            elif control_packet.Message_Packet_ID == 4:
+                # should be the second last control pkt sent, where segmentation didn't happen
+                if data1 and data2:
+                    openvpn_packet1 = OpenVPN_raw_ctr_2app(data1)
+                    openvpn_packet2 = OpenVPN_raw_ctr_1app(data2)
+                    nowpkt = "ctr2in1"
+                else:
+                    openvpn_packet = OpenVPN_raw_ctr(data) 
+
+            elif control_packet.Message_Packet_ID == 6:
+                # should be the last control pkt sent, where segmentation didn't happen
+                openvpn_packet = OpenVPN_raw_ctr_1app(data) 
+                nowpkt = "s_c3" 
+            else: 
+                # might be application data? 
+                openvpn_packet = OpenVPN_raw_ctr(data)
+
+
+        # print("******************* the nowpkt is", nowpkt, "and args.pkt is", args.pkt)
+        # now we do the fuzzing part 
+        # first, for 1p1f, we confirm we should fuzz the current pkt, either directly the same pkt or we can find the target pkt in the 2 in 1 pkt
+        if args.fuzzway == "1p1f" and (nowpkt == args.pkt or (nowpkt == "sh2in1" and args.pkt in ["s_hello21", "s_hello22"]) or (nowpkt == "ctr2in1" and args.pkt in ["s_c1", "s_c2"])):
+            # for 3 in 1 case, we first locate the target pkt 
+            # print("******************* we are in 1p1f, and nowpkt is", nowpkt, "and args.pkt is", args.pkt)
+            if (args.pkt == "s_hello21" or args.pkt == "s_c1") and data1:
+                openvpn_packet = openvpn_packet1 
+            elif (args.pkt == "s_hello22" or args.pkt == "s_c2" ) and data2:
+                openvpn_packet = openvpn_packet2
+            else:
+                # should be only one pkt 
+                pass 
+
+            if args.field=="op":
+                # ensure choosing a different op_code
+                old_opcode = (openvpn_packet.Type & OPCODE_MASK) >> 3
+                old_keyid = openvpn_packet.Type & KEYID_MASK
+                new_opcode = old_opcode
+
+                if args.howto=="rand_vali": # random value from the valid value list
+                    while new_opcode==old_opcode: 
+                        new_opcode = random.choice(opcode_array)
+                elif args.howto=="rand_any": # random value which occupies 5bit, i.e., from [0, 31]
+                    while new_opcode==old_opcode: 
+                        new_opcode = random.randint(0, 31)
+                elif args.howto=="rand_zero":
+                    new_opcode = 0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                new_type = (new_opcode << 3) | old_keyid
+                openvpn_packet.Type = new_type
+                print("the new opcode:", new_opcode, " keyid:", old_keyid, " type:", openvpn_packet.Type)
+                fuzzed = True
+
+            elif args.field == "sid":
+                old_sid = openvpn_packet.Session_ID
+                new_sid = old_sid
+                if args.howto== "rand_any": # random value which occupies 8bytes, i.e., 64bits
+                    while new_sid == old_sid: 
+                        new_sid = random.getrandbits(64)
+                elif args.howto=="rand_zero":
+                    new_sid = 0
+                else: 
+                    print("~~~~~~~~~~~ unknown howto method ~~~~~~~~~~~~~")
+                openvpn_packet.Session_ID = new_sid
+
+            elif args.field == "sid_r":
+                old_sid_r = openvpn_packet.Remote_Session_ID
+                new_sid_r = old_sid_r
+                
+                if args.howto== "rand_any": # random value which occupies 8bytes, i.e., 64bits
+                    while new_sid_r == old_sid_r: 
+                        new_sid_r = random.getrandbits(64)
+                elif args.howto=="rand_zero":
+                    new_sid_r = 0 
+                else: 
+                    print("~~~~~~~~~~~ unknown howto method ~~~~~~~~~~~~~")
+                openvpn_packet.Remote_Session_ID = new_sid_r
+
+            elif args.field=="mid_array": # ack-target experiments
+                # print(" ~~~~~~~~~~~~~~~~~~~~~~ it's mid_array experiment ~~~~~~~~~~~~~")
+                old_mid_array = openvpn_packet.Packet_ID_Array
+                new_mid_array = old_mid_array
+                old_mid_arrlen = openvpn_packet.Message_Packet_ID_Array_Lenth
+
+                if args.howto == "rand_vali":
+                    while new_mid_array==old_mid_array:
+                        new_mid_array = random.choice(mid_arr)
+                elif args.howto == "rand_any":
+                    while new_mid_array==old_mid_array:
+                        new_mid_array = random.getrandbits(32).to_bytes(4*old_mid_arrlen, 'big')
+                elif args.howto == "rand_zero":
+                    new_mid_array = b"\x00\x00\x00\x00"
+
+                elif args.howto=="rm_some": # for now, we change the 2nd element to be 0
+                    mutable_mid_array = bytearray(old_mid_array)
+                    mutable_mid_array[4:8] = b'\x00\x00\x00\x00'
+                    new_mid_array = bytes(mutable_mid_array)
+                elif args.howto=="large":
+                    mutable_mid_array = bytearray(old_mid_array)
+                    mutable_mid_array[0:4] = b'\x00\x00\x00\x09' # for now, we replace the 1st element to be 9
+                    new_mid_array = bytes(mutable_mid_array)
+
+                openvpn_packet.Packet_ID_Array = new_mid_array
+                openvpn_packet.Message_Packet_ID_Array_Lenth = int(len(new_mid_array)/4)
+                print(f"we dispaly the {args.howto} fuzzed {nowpkt} packet:")
+                openvpn_packet.show()
+                fuzzed = True
+
+            elif args.field=="mpid":
+                # ensure a different mpid
+                old_mpid=openvpn_packet.Message_Packet_ID
+                new_mpid=old_mpid
+
+                if args.howto=="rand_vali":
+                    while new_mpid==old_mpid:
+                        new_mpid = random.choice(mpid_array)
+                elif args.howto=="rand_any":
+                    while new_mpid==old_mpid:
+                        new_mpid = random.randint(0, 0xFFFFFFFF) # random 4 byte int
+                elif args.howto=="rand_zero":
+                    new_mpid=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.Message_Packet_ID=new_mpid
+                print("the new Message_Packet_ID:", new_mpid)
+                fuzzed = True
+
+            elif args.field=="tls_ctype":
+                old_ctype=openvpn_packet.TLS_Content_type
+                new_ctype=old_ctype
+
+                if args.howto=="rand_vali":
+                    while new_ctype==old_ctype:
+                        new_ctype=random.choice(tls_ctype_array)
+                elif args.howto=="rand_any":
+                    while new_ctype==old_ctype:
+                        new_ctype=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_ctype=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.TLS_Content_type=new_ctype
+                print("the new TLS_Content_type:", new_ctype)
+                fuzzed=True
+
+            elif args.field=="tls_v":
+                old_tlsv=openvpn_packet.TLS_Version
+                new_tlsv=old_tlsv
+
+                if args.howto=="rand_vali":
+                    while new_tlsv==old_tlsv:
+                        new_tlsv=random.choice(tls_v_array)
+                elif args.howto=="rand_any":
+                    while new_tlsv==old_tlsv:
+                        new_tlsv=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_tlsv=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.TLS_Version=new_tlsv
+                print("the new TLS_Version:", new_tlsv)
+                fuzzed=True
+
+            elif args.field=="tls_htype":
+                old_htype=openvpn_packet.Handshake_Type
+                new_htype=old_htype
+
+                if args.howto=="rand_vali":
+                    while new_htype==old_htype:
+                        new_htype=random.choice(tls_htype_array)
+                elif args.howto=="rand_any":
+                    while new_htype==old_htype:
+                        new_htype=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_htype=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.Handshake_Type=new_htype
+                print("the new Handshake_Type:", new_htype)
+                fuzzed=True
+
+            elif args.field=="hs_v":
+                old_hsv=openvpn_packet.HS_Version
+                new_hsv=old_hsv
+
+                if args.howto=="rand_vali":
+                    while new_hsv==old_hsv:
+                        new_hsv=random.choice(hs_v_array)
+                elif args.howto=="rand_any":
+                    while new_hsv==old_hsv:
+                        new_hsv=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_hsv=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+
+                openvpn_packet.HS_Version=new_hsv
+                print("the new HS_Version:", new_hsv)
+                fuzzed=True
+
+            # howto can be rand_any or rand_zero
+            elif args.field=="ccs": # 
+                old_ccs=openvpn_packet.Change_Cipher_Spec_Message
+                new_ccs=old_ccs
+                if args.howto=="rand_any":
+                    while new_ccs==old_ccs:
+                        new_ccs = random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_ccs=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Change_Cipher_Spec_Message=new_ccs
+                print("the new Change_Cipher_Spec_Message:", new_ccs)
+                fuzzed = True
+
+            elif args.field=="rlen":
+                old_rlen=openvpn_packet.Record_Length
+                new_rlen=old_rlen
+                if args.howto=="rand_any":
+                    while new_rlen==old_rlen:
+                        new_rlen=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_rlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Record_Length=new_rlen
+                print("the new Record_Length:", new_rlen)
+                fuzzed = True
+
+            elif args.field=="hslen":
+                old_hslen=openvpn_packet.HS_Length
+                new_hslen=old_hslen
+                if args.howto=="rand_any":
+                    while new_hslen==old_hslen:
+                        new_hslen=random.randint(0, 0xffffff) # random 3-byte int
+                elif args.howto=="rand_zero":
+                    new_hslen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.HS_Length=new_hslen
+                print("the new HS_Length:", new_hslen)
+                fuzzed = True
+
+            elif args.field=="tls_slen":
+                old_sidlen=openvpn_packet.Session_ID_Length
+                new_sidlen=old_sidlen
+                if args.howto=="rand_any":
+                    while new_sidlen==old_sidlen:
+                        new_sidlen=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_sidlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Session_ID_Length=new_sidlen
+                print("the new Session_ID_Length:", new_sidlen)
+                fuzzed = True
+
+            elif args.field=="tls_cslen":
+                old_cslen=openvpn_packet.Cipher_Suites_Length
+                new_cslen=old_cslen
+                if args.howto=="rand_any":
+                    while new_cslen==old_cslen:
+                        new_cslen=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_cslen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Cipher_Suites_Length=new_cslen
+                print("the new Cipher_Suites_Length:", new_cslen)
+                fuzzed = True
+            
+            elif args.field=="tls_cmlen":
+                old_cmlen=openvpn_packet.Compression_Methods_Length
+                new_cmlen=old_cmlen
+                if args.howto=="rand_any":
+                    while new_cmlen==old_cmlen:
+                        new_cmlen=random.randint(0, 255) # random 1 byte int
+                elif args.howto=="rand_zero":
+                    new_cmlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Compression_Methods_Length=new_cmlen
+                print("the new Compression_Methods_Length:", new_cmlen)
+                fuzzed = True
+
+            elif args.field=="tls_extlen":
+                old_extlen=openvpn_packet.Extensions_Length
+                new_extlen=old_extlen
+                if args.howto=="rand_any":
+                    while new_extlen==old_extlen:
+                        new_extlen=random.randint(0, 65535) # random 2-byte int
+                elif args.howto=="rand_zero":
+                    new_extlen=0
+                else:
+                    print("**************** unknown howto parameter ******************")
+                
+                openvpn_packet.Extensions_Length=new_extlen
+                print("the new Extensions_Length:", new_extlen)
+                fuzzed = True
+            
+            # now we should use openvpn_packet to replace the original pkt which is 3 in one
+            if args.pkt == "s_hello21" or args.pkt == "s_c1":
+                openvpn_packet1 = openvpn_packet
+            elif args.pkt == "s_hello22" or args.pkt == "s_c2":
+                openvpn_packet2 = openvpn_packet
+            else:
+                # no need to replace
+                pass 
+
+        # now the reorder part fuzzing, prepare stuff from server to reorder, i.e., s1 bunch which includes M4 and M6; and s2 bunch which is 2 in 1
+        # s_hello1 or sh2in1  
+        elif args.fuzzway=="reorder" and args.bunch=="s1" and (nowpkt=="s_hello1" or nowpkt=="sh2in1"):
+            if nowpkt=="s_hello1":
+                s1_saved_pkts[0]=openvpn_packet
+            else: # must be sh2in1
+                if data1 and data2:
+                    s1_saved_pkts[1]=openvpn_packet1
+                    s1_saved_pkts[2]=openvpn_packet2
+                else:
+                    # should not go to this branch
+                    print("we should not go to this branch")
+                    sys.exit(1) 
+
+        # ctr2in1 
+        elif args.fuzzway=="reorder" and args.bunch=="s2" and nowpkt=="ctr2in1":
+            if data1 and data2:
+                s2_saved_pkts[0]=openvpn_packet1
+                s2_saved_pkts[1]=openvpn_packet2
+            else: 
+                # should not go to this branch
+                print("we should not go to this branch")
+                sys.exit(1)       
+           
+        # since fuzzing is done, now prepare the bytes to be sent 
+        # print("~~~~~~~~~~~~~~~~ since fuzzing is done, now prepare the bytes to be sent and show packet ~~~~~~~~~~~~~~~~~")
+        if data1==None: # not multiple in one pkt
+            # openvpn_packet.show()
+            tosend = bytes(openvpn_packet)
+        elif data1 and data2: # server side should only have 2 in one pkt if multiple in one pkt
+            # openvpn_packet1.show()
+            # openvpn_packet2.show()
+
+            if args.fuzzway == "reorder" and args.bunch=="s1" and nowpkt=="sh2in1":
+                order_array = [0,1,2]
+                permutations = list(itertools.permutations(order_array))
+                permutations.remove(tuple(order_array))
+                chosen_permutation = random.choice(permutations)
+                print(f"************** the chosen reordered index array for s1 bunch is {chosen_permutation} ****************")
+           
+                tosend = bytes(s1_saved_pkts[chosen_permutation[0]]) + bytes(s1_saved_pkts[chosen_permutation[1]]) + bytes(s1_saved_pkts[chosen_permutation[2]])
+                print("**************** reordering s_hello and sh2in1 done *******************") 
+            
+
+            elif args.fuzzway == "reorder" and args.bunch=="s2" and nowpkt=="ctr2in1":
+                # only one reorder way which is reverse the order 
+                tosend = bytes(s2_saved_pkts[1]) + bytes(s2_saved_pkts[0])
+                print("**************** reordering server ctr2in1 done *******************")
+
+            else:
+                tosend = bytes(openvpn_packet1) + bytes(openvpn_packet2)
+
+        else: 
+            print("we should not go to this branch")
+            sys.exit(1) 
+
+        # below, just sending logic, send or not.
+        if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
+            # the only case we don't send now 
+            if args.fuzzway == "reorder" and args.bunch=="s1" and nowpkt=="s_hello1":
+                # cannot send now, we have to wait for sh2in1
+                pass
+            else:
+                self.factory.server.write(tosend)
+                print("SERVER => CLIENT, data length:", len(tosend))
+                sent_pkt_num += 1
+        else:
+            print("SERVER => CLIENT: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(tosend))
       
  
     def write(self, data):
@@ -524,638 +1441,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-"""
-class Forward(DatagramProtocol):
-    def datagramReceived(self, data, addr):
-        # print(f"the proxy received {data!r} from {addr}")
-        # print(f"the proxy received {len(data)} bytes data from {addr}")
-        # print("the type of data is ", type(data)) # class bytes 
-        global client_ip
-        global server_ip
-        global client_port
-        global server_port 
-        global ctr_from_c
-        global ctr_from_s
-        global nowpkt
-      
-        global s1_saved_pkts 
-        global c1_saved_pkts 
-        global s2_saved_pkts 
-        global c_saved_acks
-        global s_saved_acks
-
-        global replay_select
-        global allowed_control_v1_num
-        global sent_control_v1_num
-
-
-        if test_type == "openvpn":
-            to_get_op_code_pkt = to_get_op_code(data)
-            packet_type = to_get_op_code_pkt.Type
-            type_opcode = ( packet_type & OPCODE_MASK) >> 3
-            type_keyid = ( packet_type & KEYID_MASK)
-            len_data = len(data)
-            print(f"*************** we got a {len_data}-bytes packet from {addr}, with opcode: {type_opcode} ***************")
-            # print("before modifictaion, the type is:", type(openvpn_packet.Type))
-
-            # according to the type_opcode, we suit the data to corresponding class
-            # Firstly, those pkts where opcodes determines how to dissect
-            if type_opcode == P_CONTROL_HARD_RESET_CLIENT_V2:
-                openvpn_packet = OpenVPN_raw_c_hr(data)
-                nowpkt = "hard_reset_c_v2"
-
-            elif type_opcode == P_CONTROL_HARD_RESET_SERVER_V2:
-                openvpn_packet = OpenVPN_raw_s_hr(data)
-                nowpkt = "hard_reset_s_v2"
-
-            # we don't consider the ACK type pkts a lot, but it should be useful since it indicates which pkts have been received
-            elif type_opcode == P_ACK_V1:
-                openvpn_packet = OpenVPN_raw_ack1(data)
-                # nowpkt = "ack_v1"
-                # the only ack from server, mark and save
-                if addr[1]==1194: 
-                    nowpkt = "s_ack"
-                    s_saved_acks[0] = openvpn_packet
-                    print("~~~~~~~~~~~~~~~~ we got s_ack ~~~~~~~~~~~~~~~~~~")
-                    openvpn_packet.show()
-
-                # the acks from client 
-                elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[0]:
-                    nowpkt = "c_ack1"
-                    c_saved_acks[0] = openvpn_packet
-                    print("~~~~~~~~~~~~~~~~ we got c_ack1 ~~~~~~~~~~~~~~~~~~")
-                elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[1]:
-                    nowpkt = "c_ack2"
-                    c_saved_acks[1] = openvpn_packet
-                    print("~~~~~~~~~~~~~~~~ we got c_ack2 ~~~~~~~~~~~~~~~~~~")
-                elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[2]:
-                    nowpkt= "c_ack3"
-                    c_saved_acks[2] = openvpn_packet
-                    print("~~~~~~~~~~~~~~~~ we got c_ack3 ~~~~~~~~~~~~~~~~~~")
-                elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[3]:
-                    nowpkt= "c_ack4"
-                    c_saved_acks[3] = openvpn_packet
-                    print("~~~~~~~~~~~~~~~~ we got c_ack4 ~~~~~~~~~~~~~~~~~~")
-                else:
-                    print("~~~~~~~~~~~~~~~~~~~~ unknown ack ~~~~~~~~~~~~~~~~~~~~")
-                    nowpkt="new_ack"
-                    openvpn_packet.show()
-
-
-            elif type_opcode == P_DATA_V2:
-                openvpn_packet = OpenVPN_raw_data(data)
-                # openvpn_packet.show()
-                nowpkt = "data_v2"
-
-            # secondly, the control_v1 pkts, we determine by looking at the TLS record first field?
-            # from client
-            elif type_opcode == P_CONTROL_V1 and addr[1]!=1194:
-                control_packet = OpenVPN_raw_ctr(data)
-                if control_packet.TLS_Content_type == 22: # handshake, so client hello 
-                    openvpn_packet = OpenVPN_raw_ctr_ch(data)
-                    nowpkt = "c_hello"
-                    ctr_from_c = CH_sent
-
-                elif control_packet.TLS_Content_type == 20: # CCS
-                    openvpn_packet = OpenVPN_raw_ctr_ccs(data)
-                    nowpkt = "ccs" 
-                    ctr_from_c = CCS_sent
-
-                # we combine length feature to differ betwen c_c1 and c_c2
-                else:
-                    if len_data>1000: # 1222; use length for a rough mapping
-                        openvpn_packet = OpenVPN_raw_ctr_ctd(data)
-                        nowpkt = "c_c1"
-                        ctr_from_c = Cctd_sent1
-                    else: # 173
-                        openvpn_packet = OpenVPN_raw_ctr_ctd(data)
-                        nowpkt = "c_c2"
-                        ctr_from_c = Cctd_sent2
-
-            # from server
-            elif type_opcode == P_CONTROL_V1 and addr[1]==1194:
-                control_packet = OpenVPN_raw_ctr(data)
-                if control_packet.TLS_Content_type == 22: # handshake, so server hello
-                    openvpn_packet = OpenVPN_raw_ctr_sh(data)
-                    nowpkt = "s_hello_1"
-                    ctr_from_s = SH_sent
-
-                elif control_packet.TLS_Content_type == 23: # application data
-                # we combine length feature to differ betwen 2pp or 1app 
-                    if len_data < 200: # 192
-                        openvpn_packet = OpenVPN_raw_ctr_2app(data)
-                        nowpkt = "s_c1"
-                        ctr_from_s = S2app_sent
-                    elif len_data < 240:  # 238
-                        openvpn_packet = OpenVPN_raw_ctr_1app(data)
-                        nowpkt = "s_c2"
-                        ctr_from_s = S1app_sent
-                    else: # 256
-                        openvpn_packet = OpenVPN_raw_ctr_1app(data)
-                        nowpkt = "s_c3"
-                        ctr_from_s = Slastapp_sent
-
-                else: # ctd
-                    openvpn_packet = OpenVPN_raw_ctr_ctd(data)
-                    nowpkt = "s_hello_2"
-                    ctr_from_s = Sctd_sent
-
-            else: 
-                nowpkt =  "unknown"
-                openvpn_packet = OpenVPN_raw_ctr(data)
-                print("*************** unsupported OpenVPN packet type, use raw_ctr parsing *******************")
-               
-            # old dissection method deleted: by remembering the last sent pkt from that party, which only works well when no fuzzing exists
-          
-            # openvpn_packet.show() 
-
-            # after correct dissection, we change certain parts according to the fuzzing parameters
-            fuzzed = False
-
-            if args.fuzzway=="1p1f" and args.pkt==nowpkt: # find the matched pkt
-                # print("~~~~~~~~~~~~~~~ we arrived here ~~~~~~~~~~~~~")
-                if args.field=="op":
-                    # ensure choosing a different op_code
-                    new_opcode = type_opcode
-                    
-                    if args.howto=="rand_vali": # random value from the valid value list
-                        while new_opcode==type_opcode: 
-                            new_opcode = random.choice(opcode_array)
-                    elif args.howto=="rand_any": # random value which occupies 5bit, i.e., from [0, 31]
-                        while new_opcode==type_opcode: 
-                            new_opcode = random.randint(0, 31)
-                    elif args.howto=="rand_zero":
-                        new_opcode = 0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-
-                    new_type = (new_opcode << 3) | type_keyid
-                    openvpn_packet.Type = new_type
-                    print("the new opcode:", new_opcode, " keyid:", type_keyid, " type:", openvpn_packet.Type)
-                    fuzzed = True
-
-                elif args.field == "sid":
-                    old_sid = openvpn_packet.Session_ID
-                    new_sid = old_sid
-                    if args.howto== "rand_any": # random value which occupies 8bytes, i.e., 64bits
-                        while new_sid == old_sid: 
-                            new_sid = random.getrandbits(64)
-                    elif args.howto=="rand_zero":
-                        new_sid = 0
-                    else: 
-                        print("~~~~~~~~~~~ unknown howto method ~~~~~~~~~~~~~")
-                    openvpn_packet.Session_ID = new_sid
-
-                elif args.field == "sid_r":
-                    old_sid_r = openvpn_packet.Remote_Session_ID
-                    new_sid_r = old_sid_r
-                    
-                    if args.howto== "rand_any": # random value which occupies 8bytes, i.e., 64bits
-                        while new_sid_r == old_sid_r: 
-                            new_sid_r = random.getrandbits(64)
-                    elif args.howto=="rand_zero":
-                        new_sid_r = 0 
-                    else: 
-                        print("~~~~~~~~~~~ unknown howto method ~~~~~~~~~~~~~")
-                    openvpn_packet.Remote_Session_ID = new_sid_r
-
-                elif args.field=="mid_array": # ack-target experiments
-                    # print(" ~~~~~~~~~~~~~~~~~~~~~~ it's mid_array experiment ~~~~~~~~~~~~~")
-                    old_mid_array = openvpn_packet.Packet_ID_Array
-                    new_mid_array = old_mid_array
-                    old_mid_arrlen = openvpn_packet.Message_Packet_ID_Array_Lenth
-
-                    if args.howto == "rand_vali":
-                        while new_mid_array==old_mid_array:
-                            new_mid_array = random.choice(mid_arr)
-                    elif args.howto == "rand_any":
-                        while new_mid_array==old_mid_array:
-                            new_mid_array = random.getrandbits(32).to_bytes(4*old_mid_arrlen, 'big')
-                    elif args.howto == "rand_zero":
-                        new_mid_array = b"\x00\x00\x00\x00"
-
-                    elif args.howto=="rm_some": # for now, we change the 2nd element to be 0
-                        mutable_mid_array = bytearray(old_mid_array)
-                        mutable_mid_array[4:8] = b'\x00\x00\x00\x00'
-                        new_mid_array = bytes(mutable_mid_array)
-                    elif args.howto=="large":
-                        mutable_mid_array = bytearray(old_mid_array)
-                        mutable_mid_array[0:4] = b'\x00\x00\x00\x09' # for now, we replace the 1st element to be 9
-                        new_mid_array = bytes(mutable_mid_array)
-
-                    openvpn_packet.Packet_ID_Array = new_mid_array
-                    openvpn_packet.Message_Packet_ID_Array_Lenth = int(len(new_mid_array)/4)
-                    print(f"we dispaly the {args.howto} fuzzed {nowpkt} packet:")
-                    openvpn_packet.show()
-                    fuzzed = True
-
-                elif args.field=="mpid":
-                    # ensure a different mpid
-                    old_mpid=openvpn_packet.Message_Packet_ID
-                    new_mpid=old_mpid
-
-                    if args.howto=="rand_vali":
-                        while new_mpid==old_mpid:
-                            new_mpid = random.choice(mpid_array)
-                    elif args.howto=="rand_any":
-                        while new_mpid==old_mpid:
-                            new_mpid = random.randint(0, 0xFFFFFFFF) # random 4 byte int
-                    elif args.howto=="rand_zero":
-                        new_mpid=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-
-                    openvpn_packet.Message_Packet_ID=new_mpid
-                    print("the new Message_Packet_ID:", new_mpid)
-                    fuzzed = True
-
-                elif args.field=="tls_ctype":
-                    old_ctype=openvpn_packet.TLS_Content_type
-                    new_ctype=old_ctype
-
-                    if args.howto=="rand_vali":
-                        while new_ctype==old_ctype:
-                            new_ctype=random.choice(tls_ctype_array)
-                    elif args.howto=="rand_any":
-                        while new_ctype==old_ctype:
-                            new_ctype=random.randint(0, 255) # random 1 byte int
-                    elif args.howto=="rand_zero":
-                        new_ctype=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-
-                    openvpn_packet.TLS_Content_type=new_ctype
-                    print("the new TLS_Content_type:", new_ctype)
-                    fuzzed=True
-
-                elif args.field=="tls_v":
-                    old_tlsv=openvpn_packet.TLS_Version
-                    new_tlsv=old_tlsv
-
-                    if args.howto=="rand_vali":
-                        while new_tlsv==old_tlsv:
-                            new_tlsv=random.choice(tls_v_array)
-                    elif args.howto=="rand_any":
-                        while new_tlsv==old_tlsv:
-                            new_tlsv=random.randint(0, 65535) # random 2-byte int
-                    elif args.howto=="rand_zero":
-                        new_tlsv=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-
-                    openvpn_packet.TLS_Version=new_tlsv
-                    print("the new TLS_Version:", new_tlsv)
-                    fuzzed=True
-
-                elif args.field=="tls_htype":
-                    old_htype=openvpn_packet.Handshake_Type
-                    new_htype=old_htype
-
-                    if args.howto=="rand_vali":
-                        while new_htype==old_htype:
-                            new_htype=random.choice(tls_htype_array)
-                    elif args.howto=="rand_any":
-                        while new_htype==old_htype:
-                            new_htype=random.randint(0, 255) # random 1 byte int
-                    elif args.howto=="rand_zero":
-                        new_htype=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-
-                    openvpn_packet.Handshake_Type=new_htype
-                    print("the new Handshake_Type:", new_htype)
-                    fuzzed=True
-
-                elif args.field=="hs_v":
-                    old_hsv=openvpn_packet.HS_Version
-                    new_hsv=old_hsv
-
-                    if args.howto=="rand_vali":
-                        while new_hsv==old_hsv:
-                            new_hsv=random.choice(hs_v_array)
-                    elif args.howto=="rand_any":
-                        while new_hsv==old_hsv:
-                            new_hsv=random.randint(0, 65535) # random 2-byte int
-                    elif args.howto=="rand_zero":
-                        new_hsv=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-
-                    openvpn_packet.HS_Version=new_hsv
-                    print("the new HS_Version:", new_hsv)
-                    fuzzed=True
-
-                # howto can be rand_any or rand_zero
-                elif args.field=="ccs": # 
-                    old_ccs=openvpn_packet.Change_Cipher_Spec_Message
-                    new_ccs=old_ccs
-                    if args.howto=="rand_any":
-                        while new_ccs==old_ccs:
-                            new_ccs = random.randint(0, 255) # random 1 byte int
-                    elif args.howto=="rand_zero":
-                        new_ccs=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.Change_Cipher_Spec_Message=new_ccs
-                    print("the new Change_Cipher_Spec_Message:", new_ccs)
-                    fuzzed = True
-
-                elif args.field=="rlen":
-                    old_rlen=openvpn_packet.Record_Length
-                    new_rlen=old_rlen
-                    if args.howto=="rand_any":
-                        while new_rlen==old_rlen:
-                            new_rlen=random.randint(0, 65535) # random 2-byte int
-                    elif args.howto=="rand_zero":
-                        new_rlen=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.Record_Length=new_rlen
-                    print("the new Record_Length:", new_rlen)
-                    fuzzed = True
-
-                elif args.field=="hslen":
-                    old_hslen=openvpn_packet.HS_Length
-                    new_hslen=old_hslen
-                    if args.howto=="rand_any":
-                        while new_hslen==old_hslen:
-                            new_hslen=random.randint(0, 0xffffff) # random 3-byte int
-                    elif args.howto=="rand_zero":
-                        new_hslen=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.HS_Length=new_hslen
-                    print("the new HS_Length:", new_hslen)
-                    fuzzed = True
-
-                elif args.field=="tls_slen":
-                    old_sidlen=openvpn_packet.Session_ID_Length
-                    new_sidlen=old_sidlen
-                    if args.howto=="rand_any":
-                        while new_sidlen==old_sidlen:
-                            new_sidlen=random.randint(0, 255) # random 1 byte int
-                    elif args.howto=="rand_zero":
-                        new_sidlen=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.Session_ID_Length=new_sidlen
-                    print("the new Session_ID_Length:", new_sidlen)
-                    fuzzed = True
-
-                elif args.field=="tls_cslen":
-                    old_cslen=openvpn_packet.Cipher_Suites_Length
-                    new_cslen=old_cslen
-                    if args.howto=="rand_any":
-                        while new_cslen==old_cslen:
-                            new_cslen=random.randint(0, 65535) # random 2-byte int
-                    elif args.howto=="rand_zero":
-                        new_cslen=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.Cipher_Suites_Length=new_cslen
-                    print("the new Cipher_Suites_Length:", new_cslen)
-                    fuzzed = True
-                
-                elif args.field=="tls_cmlen":
-                    old_cmlen=openvpn_packet.Compression_Methods_Length
-                    new_cmlen=old_cmlen
-                    if args.howto=="rand_any":
-                        while new_cmlen==old_cmlen:
-                            new_cmlen=random.randint(0, 255) # random 1 byte int
-                    elif args.howto=="rand_zero":
-                        new_cmlen=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.Compression_Methods_Length=new_cmlen
-                    print("the new Compression_Methods_Length:", new_cmlen)
-                    fuzzed = True
-
-                elif args.field=="tls_extlen":
-                    old_extlen=openvpn_packet.Extensions_Length
-                    new_extlen=old_extlen
-                    if args.howto=="rand_any":
-                        while new_extlen==old_extlen:
-                            new_extlen=random.randint(0, 65535) # random 2-byte int
-                    elif args.howto=="rand_zero":
-                        new_extlen=0
-                    else:
-                        print("**************** unknown howto parameter ******************")
-                    
-                    openvpn_packet.Extensions_Length=new_extlen
-                    print("the new Extensions_Length:", new_extlen)
-                    fuzzed = True
-                
-            
-            elif args.fuzzway=="reorder" and args.bunch=="s1" and nowpkt in s1_bunch_pkts:
-                if nowpkt=="s_hello_1":
-                    s1_saved_pkts[0]=openvpn_packet
-                else: # must be s_hello_2
-                    s1_saved_pkts[1]=openvpn_packet
-
-            elif args.fuzzway=="reorder" and args.bunch=="c1" and nowpkt in c1_bunch_pkts:
-                if nowpkt=="ccs":
-                    c1_saved_pkts[0]=openvpn_packet
-                elif nowpkt=="c_c1":
-                    c1_saved_pkts[1]=openvpn_packet
-                else: # must be c_c2
-                    c1_saved_pkts[2]=openvpn_packet
-
-            elif args.fuzzway=="reorder" and args.bunch=="s2" and nowpkt in s2_bunch_pkts:
-                if nowpkt=="s_c1":
-                    s2_saved_pkts[0]=openvpn_packet
-                elif nowpkt=="s_c2":
-                    s2_saved_pkts[1]=openvpn_packet
-                else: # must be s_c3
-                    s2_saved_pkts[2]=openvpn_packet
-
-            elif args.fuzzway=="replace" and args.howto=="ack21" and nowpkt=="c_ack2":
-                openvpn_packet = c_saved_acks[0] # use c_ack1 to replace the c_ack2
-                print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
-                openvpn_packet.show()
-
-            elif args.fuzzway=="replace" and args.howto=="ack32" and nowpkt=="c_ack3":
-                openvpn_packet = c_saved_acks[1] # use 2nd to replace 3rd
-                print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
-                openvpn_packet.show()
-
-            elif args.fuzzway=="replace" and args.howto=="ack43" and nowpkt=="c_ack4":
-                openvpn_packet = c_saved_acks[2] # use 3rd to replace 4th
-                print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
-                openvpn_packet.show()
-
-            elif args.fuzzway=="replace" and nowpkt==args.pkt and args.howto=="sid_exchange": # replace sid_c with sid_s, sid_s with sid_c
-                sid_local = openvpn_packet.Session_ID
-                sid_remote = openvpn_packet.Remote_Session_ID
-                openvpn_packet.Session_ID = sid_remote
-                openvpn_packet.Remote_Session_ID = sid_local
-                print("we display the ack with sid_c and sid_s exchanged:")
-                openvpn_packet.show()
-
-            elif args.fuzzway=="replace" and type_opcode==0x05 and args.howto=="cli2s" and args.pkt=="None":
-                print("~~~~~~~~~~~~~~~~~ we replace using client2's sid_c and sid_s ~~~~~~~~~~~~~~~~ ")
-                openvpn_packet.Session_ID = 14176572716850146438
-                openvpn_packet.Remote_Session_ID = 17724891805362139753
-                openvpn_packet.show()
-
-            elif args.fuzzway=="replace" and type_opcode==0x05 and args.howto=="cli2s" and args.pkt==nowpkt:
-                print(f"~~~~~~~~~~~~~~~~~ we replace {nowpkt} using client2's sid_c and sid_s ~~~~~~~~~~~~~~~~ ")
-                openvpn_packet.Session_ID = 14648865146479322262
-                openvpn_packet.Remote_Session_ID = 17784427170696230921
-                openvpn_packet.show()
-
-            # openvpn_packet.Message_Packet_ID_Array_Lenth =0
-            # openvpn_packet.Message_Packet_ID = 0
-            # openvpn_packet[Raw].load = 0
-            # openvpn_packet.show()
-            bytes_opacket = bytes(openvpn_packet)
-
-            # not reorder 
-            if args.fuzzway!="reorder":
-                if type_opcode!=0x05 or args.fuzzway!="drop":
-                    # if the packet is from the client 
-                    if addr[1] == 40000:
-                        self.transport.write(bytes_opacket, (server_ip, server_port))
-                        print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to server:", server_port)
-                    # else must be from the server port 1194
-                    elif addr[1] == 1194:
-                        self.transport.write(bytes_opacket, (client_ip, client_port))
-                        print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to client:", client_port)
-
-                    else: # should be from other ports which use nc to send data packets
-                        print("************************* we got nc sent packets here *************************** ")
-                        print("the raw part length:", len(openvpn_packet[Raw].load))
-                        openvpn_packet.show()
-                        self.transport.write(bytes_opacket, ("10.30.1.1", 4455))
-                elif args.fuzzway=="drop" and type_opcode==0x05 : # and it's ack type packets
-                    print(f"~~~~~~~~~~~~~~~~~~ we delibrately drop {nowpkt} to see effects ~~~~~~~~~~~~~~~~~~~~")
-
-
-            else: # fuzzway="reorder", two possiblities, when non-related, just forward, otherwise, see if should forward
-                if args.bunch=="s1":
-                    if nowpkt not in s1_bunch_pkts: # just forward
-                        # if the packet is from the client 
-                        if addr[1]!=1194:
-                            self.transport.write(bytes_opacket, (server_ip, server_port))
-                            print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to server:", server_port)
-                        # else must be from the server port 1194
-                        elif addr[1] == 1194:
-                            self.transport.write(bytes_opacket, (client_ip, client_port))
-                            print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to client:", client_port)
-
-                    else: # nowpkt in ..., we will see if we should reorder and send
-                        if (s1_saved_pkts[0] is not None) and (s1_saved_pkts[1] is not None):
-                            # the only way to reorder 
-                            # must be from server, so send to client
-                            bytes_opacket = bytes(s1_saved_pkts[1])
-                            self.transport.write(bytes_opacket, (client_ip, client_port))
-                            print(f"sent the {len(bytes_opacket)} bytes s_hello_2 packet to client:", client_port)
-                            bytes_opacket = bytes(s1_saved_pkts[0])
-                            self.transport.write(bytes_opacket, (client_ip, client_port))
-                            print(f"sent the {len(bytes_opacket)} bytes s_hello_1 packet to client:", client_port)
-                            print("**************** reordering s_hello_1 and s_hello_2 done *******************")
-                        else:
-                            print("**************** reordering s1 stocked, not ready to send ********************")
-
-                elif args.bunch=="c1":
-                    if nowpkt not in c1_bunch_pkts: # just forward
-                         # if the packet is from the client 
-                        if addr[1]!=1194:
-                            self.transport.write(bytes_opacket, (server_ip, server_port))
-                            print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to server:", server_port)
-                        # else must be from the server port 1194
-                        elif addr[1] == 1194:
-                            self.transport.write(bytes_opacket, (client_ip, client_port))
-                            print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to client:", client_port)
-
-                    else: # nowpkt in..., we will see if we should reorder and send
-                        if all(item is not None for item in c1_saved_pkts): # ready to send 
-                            order_array = [0,1,2]
-                            permutations = list(itertools.permutations(order_array))
-                            permutations.remove(tuple(order_array)) # remove the original order
-                            chosen_permutation = random.choice(permutations) # choose a random reordered array
-                            print(f"************** the chosen reordered index array is {chosen_permutation} ****************")
-
-                            for element in chosen_permutation:
-                                bytes_opacket = bytes(c1_saved_pkts[element])
-                                self.transport.write(bytes_opacket, (server_ip, server_port))
-                                print(f"sent the {len(bytes_opacket)} bytes {c1_bunch_pkts[element]} packet to server:", server_port)
-                            print("**************** reordering ccs, c_c1, c_c2 done *******************")
-                        else: # not ready to send
-                            print("**************** reordering c1 stocked, not ready to send ********************")
-
-                elif args.bunch=="s2":
-                    if nowpkt not in s2_bunch_pkts: # just forward
-                        # if the packet is from the client 
-                        if addr[1]!=1194:
-                            self.transport.write(bytes_opacket, (server_ip, server_port))
-                            print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to server:", server_port)
-                        # else must be from the server port 1194
-                        elif addr[1] == 1194:
-                            self.transport.write(bytes_opacket, (client_ip, client_port))
-                            print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to client:", client_port)
-
-                    else: # must be nowpkt in..., we will see if we should reorder and send
-                        if all(item is not None for item in s2_saved_pkts): # ready to send 
-                            order_array = [0,1,2]
-                            permutations = list(itertools.permutations(order_array))
-                            permutations.remove(tuple(order_array)) # remove the original order
-                            chosen_permutation = random.choice(permutations) # choose a random reordered array
-                            print(f"************** the chosen reordered index array is {chosen_permutation} ****************")
-
-                            for element in chosen_permutation:
-                                bytes_opacket = bytes(s2_saved_pkts[element])
-                                self.transport.write(bytes_opacket, (client_ip, client_port))
-                                print(f"sent the {len(bytes_opacket)} bytes {s2_bunch_pkts[element]} packet to client:", client_port)
-                            print("**************** reordering s_c1, s_c2, s_c3 done *******************")  
-
-                        else: # not ready to send
-                            print("**************** reordering s2 stocked, not ready to send ********************")
-
-                else: # now it should be the ack reorders
-                    if addr[1] == 40000:
-                        self.transport.write(bytes_opacket, (server_ip, server_port))
-                        print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to server:", server_port)
-                    # else must be from the server port 1194
-                    elif addr[1] == 1194:
-                        self.transport.write(bytes_opacket, (client_ip, client_port))
-                        print(f"sent the {fuzzed_dic[fuzzed]} {len(bytes_opacket)} bytes packet to client:", client_port)
-
-
-
-
-        elif test_type=="wireguard":
-            print("~~~~~~~~~~~~~~ we are proxy for wireguard ~~~~~~~~~~")
-            if addr[0] == client_ip: # from client
-                client_port = addr[1]
-                self.transport.write(data, (server_ip, server_port))
-                print(f"sent the original {len(data)} bytes packet to server:", server_port)
-                
-            elif addr[0] == server_ip: # from server 
-                self.transport.write(data, (client_ip, client_port))
-                print(f"sent the original {len(data)} bytes packet to client:", client_port)
-                
-def main():   
-    parser = argparse.ArgumentParser(description="Parse the fuzzing selection")
-    parser.add_argument("--fuzzway", type=str, help="the selected fuzzing way", default="None")
-    parser.add_argument("--pkt", type=str, help="the selected pkt to fuzz", default="None")
-    parser.add_argument("--field", type=str, help="the selectd field to fuzz", default="None")
-    parser.add_argument("--howto", type=str, help="how to change the field value", default="None")
-    parser.add_argument("--bunch", type=str, help="the selected bunch of messages to reorder", default="None")
-
-    global args 
-    args = parser.parse_args()
-
-    reactor.listenUDP(binding_port, Forward())
-    reactor.run()
-
-
-if __name__ == "__main__":
-    main()
-"""

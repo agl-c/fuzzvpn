@@ -107,28 +107,28 @@ class Forward(DatagramProtocol):
             to_get_op_code_pkt = to_get_op_code(data)
             togetpacket_type = to_get_op_code_pkt.Type
             toget_opcode = ( togetpacket_type & OPCODE_MASK) >> 3
-            if toget_opcode==7:
-                openvpn_packet = CHR(data)
-            else:
-                openvpn_packet = OpenVPN(data)
+            # if toget_opcode==7:
+            #     openvpn_packet = CHR(data)
+            # else:
+            #     openvpn_packet = OpenVPN(data)
             # print("We first display the packet fields before modification")
             # openvpn_packet.show() 
 
             # print("before modifictaion, the type is:", type(openvpn_packet.Type))
             # test if we can change the field values
             # print("We then display the packet fields after modification")
-            packet_type = openvpn_packet.Type
-            type_opcode = ( packet_type & OPCODE_MASK) >> 3
-            type_keyid = ( packet_type & KEYID_MASK)
-            client_session_id = openvpn_packet.Session_ID 
-            print(f"the proxy received {len(data)} bytes data opcode {type_opcode} from {addr}")
+            # packet_type = openvpn_packet.Type
+            # type_opcode = ( packet_type & OPCODE_MASK) >> 3
+            # type_keyid = ( packet_type & KEYID_MASK)
+            # client_session_id = openvpn_packet.Session_ID 
+            print(f"the proxy received {len(data)} bytes data opcode {toget_opcode} from {addr}")
             # print("the type of client session id: ", type(client_session_id)) 
 
 
             # print("the original opcode: ", type_opcode, " and keyid: ", type_keyid)
-            new_opcode = random.choice(array_opcode)
+            # new_opcode = random.choice(array_opcode)
             # print("the new opcode: ", new_opcode, " and keyid: ", type_keyid)
-            new_type = (new_opcode << 3) | type_keyid
+            # new_type = (new_opcode << 3) | type_keyid
             # print("the new type: ", new_type)
     
     #        openvpn_packet.Type = new_type
@@ -139,7 +139,7 @@ class Forward(DatagramProtocol):
             # openvpn_packet[Raw].load = 0
     #        openvpn_packet.show()
        
-            bytes_opacket = bytes(openvpn_packet)
+            bytes_opacket = bytes(to_get_op_code_pkt)
        
         # if the packet is from the client 
             if addr[1]!=1194:
@@ -147,12 +147,12 @@ class Forward(DatagramProtocol):
                 client_port = addr[1]
                 
                 # if it's not a control_v1 packet, send casually
-                if type_opcode!= 0x04:
-                    if type_opcode==0x05: # ACK
+                if toget_opcode!= 0x04:
+                    if toget_opcode==0x05: # ACK
                         # openvpn_packet.show()
                         print("**************** we got an ACK packet  *****************")
                        # openvpn_packet.Session_ID = 4669467424213927853    
-                        openvpn_packet.show()
+                        to_get_op_code_pkt.show()
                     self.transport.write(bytes_opacket, (server_ip, 1194))
 
                     # print(f"the proxy sent {bytes_opacket!r} to server:1194")
@@ -176,23 +176,23 @@ class Forward(DatagramProtocol):
                     # else we have reached the allowed_control_v1_num
                     else:
                         print("we delibrately stop sending control_v1 packets to monitor the log progress", control_v1_num, resume_control_v1_num)
-                        print("the message packet id is", openvpn_packet.Message_Packet_ID)
+                        # print("the message packet id is", openvpn_packet.Message_Packet_ID)
 
 
                 # if the pkt is Client_hard_reset_v2, we generate 100 such pkts to see the effects
-                if type_opcode == 0x07 and args.fuzzway == "replay" and args.pkt == "client_restart_v2":
+                if toget_opcode == 0x07 and args.fuzzway == "replay" and args.pkt == "client_restart_v2":
                     print("we got the initial pkt from client, will start sending 100 copies of it")
                     for i in range(100):
-                        new_pkt = openvpn_packet
+                        new_pkt = to_get_op_code_pkt
                         # create a new random 8 byte client session ID in the type of int
                         # print("SHOULD DEBUG SETTING THE NEW RANDOM SESSION ID.....")
                         new_pkt.Session_ID = int.from_bytes(secrets.token_bytes(8), byteorder='big')
                         self.transport.write(bytes(new_pkt), (server_ip, 1194))
                         # print("sent a new packet with randomly-created client session_id to server: 1194")
 
-                if type_opcode == 0x05 and args.fuzzway == "replay" and args.pkt == "ack_c":
+                if toget_opcode == 0x05 and args.fuzzway == "replay" and args.pkt == "ack_c":
                     print("we got an ack packet from client")
-                    new_pkt = openvpn_packet
+                    new_pkt = to_get_op_code_pkt
                     bytes_new_pkt = bytes(new_pkt)
                     len_bytes_new_pkt = len(bytes_new_pkt)
                     start_time = time.time() 
@@ -214,9 +214,9 @@ class Forward(DatagramProtocol):
                                 print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
       
 
-                if type_opcode == 0x04 and args.fuzzway == "replay" and args.pkt == "control_v1":
+                if toget_opcode == 0x04 and args.fuzzway == "replay" and args.pkt == "control_v1":
                     print("we got the p_control_v1 pkt from client")
-                    new_pkt = openvpn_packet
+                    new_pkt = to_get_op_code_pkt
                     bytes_new_pkt = bytes(new_pkt)
                     len_bytes_new_pkt = len(bytes_new_pkt)
                     start_time = time.time() 
@@ -240,11 +240,11 @@ class Forward(DatagramProtocol):
                 
                    
                 # try the ndss cve, i.e., sending a single restart to server during normal connection
-                if type_opcode == 0x07 and args.fuzzway == "replay" and args.pkt == "ndss_restart":
-                    saved_pkt = openvpn_packet # after the tunnel is made, send it to trigger the cve
+                if toget_opcode == 0x07 and args.fuzzway == "replay" and args.pkt == "ndss_restart":
+                    saved_pkt = to_get_op_code_pkt # after the tunnel is made, send it to trigger the cve
                     sent_saved_pkt = False # mark false for now 
 
-                if type_opcode == 0x09 and args.fuzzway == "replay" and args.pkt == "ndss_restart":
+                if toget_opcode == 0x09 and args.fuzzway == "replay" and args.pkt == "ndss_restart":
                     if sent_saved_pkt == False: # only send it once, since it's udp, we try 5 pkts
                         for i in range(5):
                             saved_pkt.show()
@@ -255,12 +255,12 @@ class Forward(DatagramProtocol):
 
             # else must be a reply from the server on 1194
             elif addr[1] == 1194:
-                if type_opcode == 0x08:
+                if toget_opcode == 0x08:
                     print("the server replied a hard reset packet")
 
                 # if it's not a control_v1 packet, send casually
-                if type_opcode!= 0x04:
-                    if type_opcode==0x05: # ACK
+                if toget_opcode!= 0x04:
+                    if toget_opcode==0x05: # ACK
                         print("**************** we got an ACK packet *****************")
                         # openvpn_packet.show()
 
@@ -273,7 +273,7 @@ class Forward(DatagramProtocol):
                     control_v1_num += 1
                     if control_v1_num <= allowed_control_v1_num or control_v1_num > resume_control_v1_num:
                         self.transport.write(bytes_opacket, (client_ip, client_port))
-                        print(f"sent the {control_v1_num}th {len(bytes_opacket)} bytes opcode {type_opcode} control_v1 packet to client:", client_port)
+                        print(f"sent the {control_v1_num}th {len(bytes_opacket)} bytes opcode {toget_opcode} control_v1 packet to client:", client_port)
                         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
                     else:
                         print("we delibrately stop sending control_v1 packets to monitor the log progress", control_v1_num, resume_control_v1_num)
