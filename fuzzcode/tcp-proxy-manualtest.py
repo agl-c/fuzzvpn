@@ -10,6 +10,8 @@ import itertools
 import time
 
 # we use this src for the replay testing part, since it will use some measurement of replay intensity
+# we also use this src for the experiment where we drop all the ack packets from the client and server 
+
 
 # edit this to map local port numbers to a list of host:port destinations
 # source site: https://distrustsimplicity.net/articles/a-simple-udp-forwarder-in-twisted/
@@ -55,8 +57,8 @@ saved_client_restart_v2 = None
 # allowed_pkt_num =12 (ack) will cause sending of M13 and DATA messages from server, and sending of M15(push request) from client
 # allowed_pkt_num =13 will cause client sending M14 and DATA messages to server, and server retransmitting M13
 
-allowed_pkt_num = 10000
-resume_pkt_num = 16
+allowed_pkt_num = 12 
+resume_pkt_num = 25
 sent_pkt_num = 0
 pktnum = 0
 
@@ -447,13 +449,17 @@ class TCPProxyProtocol(protocol.Protocol):
         openvpn_packet = get2fields
         
         if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
-            if self.proxy_to_server_protocol:
-                self.proxy_to_server_protocol.write(data)
-            else:
-                self.buffer = data
-                print("late launch of right part happens")
-            print("CLIENT => SERVER, length:", len(data))
-            sent_pkt_num += 1
+            # we add the ack drop experiment here 
+            if args.fuzzway == "drop" and args.pkt == "ack" and getopcode == 0x05:
+                print("******************** we drop the ack packet from  the client")
+            else: 
+                if self.proxy_to_server_protocol:
+                    self.proxy_to_server_protocol.write(data)
+                else:
+                    self.buffer = data
+                    print("late launch of right part happens")
+                print("CLIENT => SERVER, length:", len(data))
+                sent_pkt_num += 1
 
         else:
             print("CLIENT => SERVER: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
@@ -470,9 +476,15 @@ class TCPProxyProtocol(protocol.Protocol):
 
         # we think the right part protocol has launched up now, and current op is no 7, we have stored the one to replay, do it 
         if args.fuzzway == "replay" and args.pkt == "client_restart_v2" and saved_client_restart_v2 and getopcode !=0x07:
+            new_pkt = saved_client_restart_v2
+            bytes_new_pkt = bytes(new_pkt)
+            len_bytes_new_pkt = len(bytes_new_pkt)
+            start_time = time.time() 
+            total_bytes_sent = 0 
+
             print("we use the initial pkt from client and tart sending", num_replay, " copies of it")
             for i in range(num_replay):
-                new_pkt = saved_client_restart_v2
+               
                 # create a new random 8 byte client session ID in the type of int
                 # print("SHOULD DEBUG SETTING THE NEW RANDOM SESSION ID.....")
                 # new_pkt.Session_ID = int.from_bytes(secrets.token_bytes(8), byteorder='big')
@@ -481,6 +493,15 @@ class TCPProxyProtocol(protocol.Protocol):
                 if self.proxy_to_server_protocol:
                     self.proxy_to_server_protocol.write(bytes(new_pkt))
                     # print("use write to send a copy of client-restart-v2, ", len(bytes(new_pkt)))
+                    total_bytes_sent += len_bytes_new_pkt
+                    if i==1000:
+                        print("we measure the sending rate when 1000 packets are sent")
+                        end_time = time.time() 
+                        total_time = end_time - start_time
+                        if total_time > 0:  
+                            bytes_per_second = total_bytes_sent / total_time  
+                            print(f"Total bytes sent: {total_bytes_sent} bytes in {total_time:.2f} seconds.")
+                            print(f"Bytes per second: {bytes_per_second:.2f} bytes/sec")
     
 
         if getopcode == 0x05 and args.fuzzway == "replay" and args.pkt == "ack_c":
@@ -576,9 +597,13 @@ class ProxyToServerProtocol(protocol.Protocol):
         print("openvpn packet len", get2fields.plen, " and opcode", getopcode)
         
         if sent_pkt_num < allowed_pkt_num or pktnum >= resume_pkt_num:
-            self.factory.server.write(data)
-            print("SERVER => CLIENT, length:", len(data))
-            sent_pkt_num += 1
+             # we add the ack drop experiment here 
+            if args.fuzzway == "drop" and args.pkt == "ack" and getopcode == 0x05:
+                print("******************** we drop the ack packet from the server")
+            else: 
+                self.factory.server.write(data)
+                print("SERVER => CLIENT, length:", len(data))
+                sent_pkt_num += 1
         else:
             print("SERVER => CLIENT: we delibrately stop sending with sent_pkt_num", sent_pkt_num, "and pkt len", len(data))
 
@@ -604,7 +629,7 @@ def main():
     args = parser.parse_args()
 
     # Start the TCP forwarder (proxy)
-    local_host = client_ip
+    local_host = server_ip
     local_port = binding_port  # The port your proxy listens on
     factory = protocol.ServerFactory()
     factory.protocol = TCPProxyProtocol

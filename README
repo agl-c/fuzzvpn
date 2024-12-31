@@ -14,9 +14,9 @@ cd /fuzzcode
 ./usesan.sh
 # now we have the built openvpn
 
-# there are mainly two python files for the packet fuzzing functionalities, and the configs directory serves for malformed configuration part
-# fuzz-udp-proxy.py serves for 1p1f, reorder, replace, drop strategies
-# udp-proxy-manualtest.py serves for replay, restrict strategies
+# for each of TCP and UDP mode, there are mainly two python files for the packet fuzzing functionalities, and the configs directory serves for malformed configuration part
+# fuzz-udp-proxy.py and fuzz-tcp-proxy.py  serve for 1p1f, reorder, replace, drop strategies
+# udp-proxy-manualtest.py and tcp-proxy-manualtest.py serve for replay, restrict strategies
 # we use pip to install some packages before running the python file
 pip install twisted
 pip install scapy
@@ -24,7 +24,10 @@ pip install scapy
 # run_fuzzing.sh is the script organizing experiments using fuzz-udp-proxy.py 
 # replay.sh is the script to test replay part
 # restrict-controlv1.sh is the script to test when restricting the number of control_v1 packets sent
+# we have corresponding scripts for TCP mode in the tcp-scripts directory
 
+# below, we explain how to use the UDP mode program as an example
+cd udp-scripts
 # before runing the script, the user should ensure the IP addresses in fuzz-udp-proxy.py and udp-proxy-manualtest.py are correct
 # in our experiment setting, the IP address in those two python files are
 # client_ip = "172.17.0.3"

@@ -147,4 +147,4 @@ for variable_name in ['nice', 'script-security', 'status-version', 'mute', 'verb
         append_variable_in_file(input_file, output_file, variable_name, fuzz_way)
 
 # 60 
-# 110 + 33 = 143
+# 141 in total 

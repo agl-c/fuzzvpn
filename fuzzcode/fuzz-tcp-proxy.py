@@ -474,6 +474,7 @@ class TCPProxyProtocol(protocol.Protocol):
         global resume_pkt_num
         global pktnum
         global c1_saved_pkts
+        global c_saved_acks
         nowpkt = "" # we have to reset the nowpkt for each new pkt 
 
         data1 = None
@@ -525,14 +526,19 @@ class TCPProxyProtocol(protocol.Protocol):
         elif getopcode == P_ACK_V1: # 5 kinds of acks
             openvpn_packet = OpenVPN_raw_ack1(data)
             if openvpn_packet.Packet_ID_Array == c_ack_mid_arr[0]:
+                c_saved_acks[0] = openvpn_packet
                 nowpkt = "c_ack1"
             elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[1]:
+                c_saved_acks[1] = openvpn_packet
                 nowpkt = "c_ack2"
             elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[2]:
+                c_saved_acks[2] = openvpn_packet
                 nowpkt = "c_ack3"
             elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[3]:
+                c_saved_acks[3] = openvpn_packet
                 nowpkt = "c_ack4"
             elif openvpn_packet.Packet_ID_Array == c_ack_mid_arr[4]:
+                c_saved_acks[4] = openvpn_packet
                 nowpkt = "c_ack5"
             
         elif getopcode == P_DATA_V2:
@@ -878,7 +884,34 @@ class TCPProxyProtocol(protocol.Protocol):
                 # should not go to this branch
                 print("we should not go to this branch")
                 sys.exit(1)
+        
+        elif args.fuzzway=="replace" and args.howto=="ack21" and nowpkt=="c_ack2":
+            openvpn_packet = c_saved_acks[0] # use c_ack1 to replace the c_ack2
+            print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
+            openvpn_packet.show()
 
+        elif args.fuzzway=="replace" and args.howto=="ack32" and nowpkt=="c_ack3":
+            openvpn_packet = c_saved_acks[1] # use 2nd to replace 3rd
+            print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
+            openvpn_packet.show()
+
+        elif args.fuzzway=="replace" and args.howto=="ack43" and nowpkt=="c_ack4":
+            openvpn_packet = c_saved_acks[2] # use 3rd to replace 4th
+            print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
+            openvpn_packet.show()
+
+        elif args.fuzzway=="replace" and args.howto=="ack54" and nowpkt=="c_ack5":
+            openvpn_packet = c_saved_acks[3] 
+            print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
+            openvpn_packet.show()
+
+        # replace ack packet's sid and sid_r using the other client's sid and sid_r 
+        elif args.fuzzway=="replace" and args.howto=="cli2s" and getopcode == P_ACK_V1:
+            # client2: TLS: tls_multi_process: i=0 state=S_GENERATED_KEYS, mysid=435ac3d1 dc739a6c, stored-sid=54819a24 0bdedd06,
+            openvpn_packet.Session_ID = 0x435ac3d1dc739a6c
+            openvpn_packet.Remote_Session_ID = 0x54819a240bdedd06
+            print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
+            openvpn_packet.show()
 
         # since fuzzing is done, now prepare the bytes to be sent
         # print("~~~~~~~~~~~~~~~~ since fuzzing is done, now prepare the bytes to be sent and show packet ~~~~~~~~~~~~~~~~~")
@@ -1364,7 +1397,16 @@ class ProxyToServerProtocol(protocol.Protocol):
             else: 
                 # should not go to this branch
                 print("we should not go to this branch")
-                sys.exit(1)       
+                sys.exit(1)   
+
+        #  # replace sid and sid_r using the other client's sid and sid_r 
+        # elif args.fuzzway=="replace" and args.howto=="cli2s" and data1==None:
+        #     # client2: TLS: tls_multi_process: i=0 state=S_GENERATED_KEYS, mysid=435ac3d1 dc739a6c, stored-sid=54819a24 0bdedd06,
+        #     openvpn_packet.Session_ID = 0x435ac3d1dc739a6c
+        #     openvpn_packet.Remote_Session_ID = 0x54819a240bdedd06 
+        #     print(f"we display the {args.fuzzway} {args.howto} fuzzed ack packet:")
+        #     openvpn_packet.show()
+    
            
         # since fuzzing is done, now prepare the bytes to be sent 
         # print("~~~~~~~~~~~~~~~~ since fuzzing is done, now prepare the bytes to be sent and show packet ~~~~~~~~~~~~~~~~~")
