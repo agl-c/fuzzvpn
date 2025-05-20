@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/851500012.svg)](https://doi.org/10.5281/zenodo.15476514)
 # use the Dockerfile to build an image openvpn2.6.12
 # the Dockerfile prepares the source code of openvpn2.6.12, as well as the /etc/openvpn directory which stores configuration material
 docker build -t openvpn2.6.12 .
