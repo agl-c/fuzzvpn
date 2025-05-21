@@ -26,7 +26,10 @@ RUN apt update && \
     pip \
     netcat \
     iperf3 \
-    socat
+    socat \
+    net-tools
+
+RUN pip install twisted scapy
 
 RUN mkdir -p /usr/local/sbin
 RUN mkdir -p /etc/openvpn
