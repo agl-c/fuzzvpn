@@ -41,6 +41,8 @@ COPY usesan.sh /openvpn/
 WORKDIR /openvpn
 # enable ASan and UBSan
 RUN ./usesan.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # the directory where all the configuration files lie 
 # ensure that we put source file in the directory where the Dockerfile lies
@@ -53,5 +55,6 @@ ENV PATH="/usr/local/sbin:${PATH}"
 EXPOSE 1194/udp
 EXPOSE 50000/udp
 
-CMD ["/bin/bash"]
+ENTRYPOINT ["/entrypoint.sh"]
+
 
