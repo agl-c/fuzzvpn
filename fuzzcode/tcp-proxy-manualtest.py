@@ -29,9 +29,9 @@ test_type = "openvpn"
 binding_port = 50000
 # "192.168.1.33" 
 # now we use the same IP as it's in docker
-client_ip = "172.17.0.3"
+client_ip = "172.17.0.4"
 # "192.168.1.155" 
-server_ip = "172.17.0.3"
+server_ip = "172.17.0.4"
 # we use 40000 in docker vpn client
 client_port = 40000
 # 1194 for openvpn, 60683 for wireguard for now
@@ -437,7 +437,7 @@ class TCPProxyProtocol(protocol.Protocol):
         global saved_client_restart_v2
 
         num_replay = args.num_replay
-        allowed_control_v1_num = args.allowed_control_v1_num
+        allowed_pkt_num = args.allowed_pkt_num
         resume_control_v1_num = args.resume_control_v1_num
 
         fuzzeddata = data 
@@ -589,6 +589,8 @@ class ProxyToServerProtocol(protocol.Protocol):
         global resume_pkt_num
         global pktnum
 
+        allowed_pkt_num = args.allowed_pkt_num
+
         fuzzeddata = data 
         pktnum+=1
 
@@ -621,7 +623,7 @@ def main():
     parser.add_argument("--howto", type=str, help="how to change the field value", default="None")
     parser.add_argument("--bunch", type=str, help="the selected bunch of messages to reorder", default="None")
     parser.add_argument("--num_replay", type=int, help="the num of replay", default=10000000)
-    parser.add_argument("--allowed_control_v1_num", type=int, help="the threshold of allowed control_v1 pkt num", default=200000)
+    parser.add_argument("--allowed_pkt_num", type=int, help="the threshold of allowed pkt num", default=200000)
     parser.add_argument("--resume_control_v1_num", type=int, help="the threshold of control_v1 pkt num to resume sending", default=20000)
 
 

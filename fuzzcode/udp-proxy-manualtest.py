@@ -13,9 +13,9 @@ import argparse
 # should first fill in the client_ip, server_ip, replay_select
 # "192.168.1.33"
 # now we use the same IP as it's in docker
-client_ip = "172.17.0.3"
+client_ip = "172.17.0.4"
 # "192.168.1.155"
-server_ip = "172.17.0.3"
+server_ip = "172.17.0.4"
 
 # "openvpn" or "wireguard"
 test_type = "openvpn"

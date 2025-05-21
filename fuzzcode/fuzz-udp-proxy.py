@@ -25,9 +25,9 @@ test_type = "openvpn"
 binding_port = 50000
 # "192.168.1.33" 
 # now we use the same IP as it's in docker
-client_ip = "172.17.0.3"
+client_ip = "172.17.0.4"
 # "192.168.1.155" 
-server_ip = "172.17.0.3"
+server_ip = "172.17.0.4"
 # we use 40000 in docker vpn client
 client_port = 40000
 # 1194 for openvpn, 60683 for wireguard for now
