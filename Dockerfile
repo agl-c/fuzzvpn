@@ -36,9 +36,11 @@ RUN mkdir -p /etc/openvpn
 
 # copy the directory where the executable openvpn lies: not enough, since some shared libraries are needed
 # we should add the whole source repo and compile
-COPY openvpn-2.6.12 /openvpn
+COPY openvpn-2.6.12/ /openvpn/
+COPY usesan.sh /openvpn/
 WORKDIR /openvpn
-# RUN ./configure && make && make install
+# enable ASan and UBSan
+RUN ./usesan.sh
 
 # the directory where all the configuration files lie 
 # ensure that we put source file in the directory where the Dockerfile lies
