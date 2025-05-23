@@ -33,13 +33,13 @@ run_fuzz(){
     # we'd better also capture the packet sequence as one of the experiment's results, too
     # we record the packets in and out of the server UDP port 1194
     # server side tcpdump
-    ser_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw.pcap"
+    ser_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-ser-tlsauth.pcap"
     tcpdump -i any tcp port 1194 -w "$ser_pcap_file" &
     ser_tcpdump_pid=$!
     echo "server side tcpdump program started as a background process with PID: $ser_tcpdump_pid"
 
     # client side tcpdump, for now we fixed client using port 40000
-    cli_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw.pcap"
+    cli_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-cli-tlsauth.pcap"
     tcpdump -i any tcp port 40000 -w "$cli_pcap_file" &
     cli_tcpdump_pid=$!
     echo "client side tcpdump program started as a background process with PID: $cli_tcpdump_pid"
@@ -47,20 +47,20 @@ run_fuzz(){
 
     # change to the openvpn configuration directory
     cd /etc/openvpn
-    # selection branches: raw; tls-auth; tls-crypt
+    # selection branches: tlsauth; tls-auth; tls-crypt
 
-    # e.g. the raw configuration
+    # e.g. the tlsauth configuration
     # Start the OpenVPN server
     # since we integrated ASan UBSan with OpenVPN, we should redirect stdout and stderr respectively
-    server_log="$directory_name/verb-$fuzzway-$pkt-$field-$howto-$bunch-server-raw"
-    server_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw"
+    server_log="$directory_name/verb-$fuzzway-$pkt-$field-$howto-$bunch-server-tlsauth"
+    server_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-server-tlsauth"
     openvpn --config tcp-server-tlsauth.conf --verb 9 1>"$server_log.log" 2>"$server_err.log" &
     server_pid=$!
     echo "openvpn server started as a background process with PID: $server_pid"
 
     # Start the OpenVPN client
-    client_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
-    client_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
+    client_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-client-tlsauth"
+    client_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-client-tlsauth"
     openvpn --config tcp-client1-tlsauth.ovpn 1>"$client_log.log" 2>"$client_err.log" &
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
