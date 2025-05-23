@@ -52,7 +52,7 @@ cd udp-scripts
 ./active-learning.sh 
 ```
 
-Then you will find in the /udp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown in the paper in Figure 2, page 6). 
+The script takes around 10 min to finishe, then you will find in the /udp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown in the paper in Figure 2, page 6). 
 
 E.g. restrict-1-client-raw.log shows the behaviors of the client side when only one control_v1 packet is allowed to be exchanged. 
 
