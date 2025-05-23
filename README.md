@@ -33,9 +33,13 @@ Take UDP mode for example, for TCP mode, similar things should be checked.
 # client_ip = "172.17.0.4"
 # server_ip = "172.17.0.4"
 # The user should change them to suit the experiment environment: the IP address can be found with ifconfig command, net-tools package should provide the command 
-# In the client configuration file, the IP address of the server should also be updated
-# in /etc/openvpn, the client1-raw-fuzz.ovpn has "remote 172.17.0.4 50000"
-# the user should change "172.17.0.4" to suit the experiment environment
+# since the above python files are in /fuzzcode directory that is mapped with the volumne method, the user can directly edit them outside the container and the changes will be reflected inside the container
+
+# Besides, the IP address of the server should also be updated in each of the client configuration files. /etc/openvpn stores all the client and server configuration files 
+# in /etc/openvpn, all the client configuration files are ended in .ovpn, so the user should change the IP address in each of the files, 
+# e.g. the client1-raw-fuzz.ovpn has the line "remote 172.17.0.4 50000"
+# the user should change "172.17.0.4" to be the correct IP address found in the experiment environment
+# the user can edit the above configuration files under /etc/openvpn directory inside the container
 ```
 
 
