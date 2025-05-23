@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-directory_name="/tcp-tmplogs"
+directory_name="/tcp-replay-logs"
 # Ensure the log directory exists
 mkdir -p "$directory_name"
 
@@ -13,8 +13,8 @@ run_fuzz(){
     local howto="$4"
     local bunch="$5"
     local num_replay="$6" 
-    local allowed_control_v1_num="$7"
-    local resume_control_v1_num="$8"
+    local allowed_pkt_num="$7"
+    local resume_pkt_num="$8"
 
     # Get the current date and time in the format YYYYMMDD-HHMMSS
     # current_time=$(date "+%Y%m%d-%H%M%S")
@@ -24,8 +24,8 @@ run_fuzz(){
     # Start the fuzz program
     fuzz_log="tcp-$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch.log"
     # PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" >"$fuzz_log" 2>&1 &
-    PYTHONUNBUFFERED=1 ./tcp-proxy-manualtest.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" --num_replay="$num_replay" --allowed_control_v1_num="$allowed_control_v1_num" --resume_control_v1_num="$resume_control_v1_num" &
-    echo "Running: ./tcp-proxy-manualtest.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch --num_replay=$num_replay --allowed_control_v1_num=$allowed_control_v1_num --resume_control_v1_num=$resume_control_v1_num"
+    PYTHONUNBUFFERED=1 ./tcp-proxy-manualtest.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" --num_replay="$num_replay" --allowed_pkt_num="$allowed_pkt_num" --resume_pkt_num="$resume_pkt_num" &
+    echo "Running: ./tcp-proxy-manualtest.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch --num_replay=$num_replay --allowed_pkt_num=$allowed_pkt_num --resume_pkt_num=$resume_pkt_num"
     fuzz_pid=$!
     echo "fuzz $fuzzway $pkt $field program started as a background process with PID: $fuzz_pid"
 
@@ -65,11 +65,11 @@ run_fuzz(){
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
 
-    echo "start sleeping for 10s"
-    sleep 10
-    echo "end sleep"
-    cd /fuzzcode
-    ./measure-conn-time.sh 
+    # echo "start sleeping for 10s"
+    # sleep 10
+    # echo "end sleep"
+    # cd /fuzzcode
+    # ./measure-conn-time.sh 
 
     # Monitor the server process status and memory usage
     # every 1 second, execute the following code to check 
@@ -149,9 +149,9 @@ field="None"
 howto="None"
 bunch="None"
 num_replay=10000000
-allowed_control_v1_num=200000
-resume_control_v1_num=20
+allowed_pkt_num=200000
+resume_pkt_num=20
 for pkt in "${pkt_array[@]}"; do
     echo "********************** we started a new fuzzing experiment *****************************"
-    run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num
+    run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_pkt_num $resume_pkt_num
 done 
