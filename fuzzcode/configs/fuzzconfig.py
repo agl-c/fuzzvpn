@@ -1,4 +1,9 @@
 #! /usr/bin/env python3
+import os
+
+output_dir = '/fuzzedconfigs/'
+os.makedirs(output_dir, exist_ok=True)
+
 large_value = 2**70
 
 def modify_variable_in_file(input_file, output_file, variable_name, fuzz_way):
@@ -15,7 +20,7 @@ def modify_variable_in_file(input_file, output_file, variable_name, fuzz_way):
             # since it has 3 parts, we handle it here, changing the 2 following values together
             if (parts[0]=='keepalive' and parts[0]==variable_name) or (parts[0]=='server' and parts[0]==variable_name) or (parts[0]=='remote' and parts[0]==variable_name):
                 if fuzz_way=='zero':
-                    print(parts)
+                    # print(parts)
                     parts[1] = str(0)
                     parts[2] = str(0)
 
@@ -45,7 +50,6 @@ def modify_variable_in_file(input_file, output_file, variable_name, fuzz_way):
                 outfile.write(f"{parts[0]} {parts[1]} {parts[2]}\n")
 
 input_file = 'server-raw-fuzz.conf'
-output_dir = '/fuzzedconfigs/'
 
 # numeric values
 for variable_name in ['port', 'keepalive', 'server']:
@@ -115,7 +119,7 @@ def append_variable_in_file(input_file, output_file, variable_name, fuzz_way):
 
 
 input_file = 'server-raw-fuzz.conf'
-output_dir = '/fuzzedconfigs/'
+
 
 # numeric values
 for variable_name in ['nice', 'script-security', 'status-version', 'mute', 'verb', 'tran-window', 'key-direction',

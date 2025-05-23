@@ -1,5 +1,5 @@
 #!/bin/bash
-log_dir="/udp-dropack-logs"   
+log_dir="/udp-restrict-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"
 
@@ -9,6 +9,9 @@ run_fuzz(){
     local field="$3"
     local howto="$4"
     local bunch="$5"
+    local num_replay="$6" 
+    local allowed_control_v1_num="$7"
+    local resume_control_v1_num="$8"
 
     # Get the current date and time in the format YYYYMMDD-HHMMSS
     # current_time=$(date "+%Y%m%d-%H%M%S")
@@ -16,10 +19,10 @@ run_fuzz(){
     # change to the fuzzcode directory
     cd /fuzzcode
     # Start the fuzz program
-    fuzz_log="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-udpproxy.log"
+    fuzz_log="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-udpproxy.log"
     # PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" >"$fuzz_log" 2>&1 &
-    PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" &
-    echo "Running: ./fuzz-udp-proxy.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch"
+    PYTHONUNBUFFERED=1 ./udp-proxy-manualtest.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" --num_replay="$num_replay" --allowed_control_v1_num="$allowed_control_v1_num" --resume_control_v1_num="$resume_control_v1_num" &
+    echo "Running: ./udp-proxy-manualtest.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch --num_replay=$num_replay --allowed_control_v1_num=$allowed_control_v1_num --resume_control_v1_num=$resume_control_v1_num"
     fuzz_pid=$!
     echo "fuzz $fuzzway $pkt $field program started as a background process with PID: $fuzz_pid"
 
@@ -27,13 +30,13 @@ run_fuzz(){
     # we'd better also capture the packet sequence as one of the experiment's results, too
     # we record the packets in and out of the server UDP port 1194
     # server side tcpdump
-    ser_pcap_file="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw.pcap"
+    ser_pcap_file="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-ser-raw.pcap"
     tcpdump -i any udp port 1194 -w "$ser_pcap_file" &
     ser_tcpdump_pid=$!
     echo "server side tcpdump program started as a background process with PID: $ser_tcpdump_pid"
 
     # client side tcpdump, for now we fixed client using port 40000
-    cli_pcap_file="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw.pcap"
+    cli_pcap_file="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-cli-raw.pcap"
     tcpdump -i any udp port 40000 -w "$cli_pcap_file" &
     cli_tcpdump_pid=$!
     echo "client side tcpdump program started as a background process with PID: $cli_tcpdump_pid"
@@ -46,15 +49,15 @@ run_fuzz(){
     # e.g. the raw configuration
     # Start the OpenVPN server
     # since we integrated ASan UBSan with OpenVPN, we should redirect stdout and stderr respectively
-    server_log="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-server-raw"
-    server_err="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw"
+    server_log="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-server-raw"
+    server_err="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-err-server-raw"
     openvpn --config server-raw-fuzz.conf --verb 9 1>"$server_log.log" 2>"$server_err.log" &
     server_pid=$!
     echo "openvpn server started as a background process with PID: $server_pid"
 
     # Start the OpenVPN client
-    client_log="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
-    client_err="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
+    client_log="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-client-raw"
+    client_err="$log_dir/$fuzzway-$allowed_control_v1_num-$resume_control_v1_num-err-client-raw"
     openvpn --config client1-raw-fuzz.ovpn --verb 9 1>"$client_log.log" 2>"$client_err.log" &
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
@@ -82,8 +85,8 @@ run_fuzz(){
     # debugged with "wait" to monitor the program exit status, but gave up due to conflict with father/son process
 
     # set a timer 60s, after that we check the status, kill 4 processes
-    echo "start sleeping for 60s"
-    sleep 60
+    echo "start sleeping for 70s"
+    sleep 70
     echo "end sleep"
     # server process exit check
     if kill -0 $server_pid > /dev/null 2>&1; then
@@ -128,49 +131,20 @@ run_fuzz(){
     echo "All background processes have finished."
 }
 
-
-# fuzzway="1p1f"
-# pkt_array=("hard_reset_c_v2" "hard_reset_s_v2" "c_hello" "s_hello_1" "s_hello_2" "ccs" "c_c1" "c_c2" "c_ack1" "c_ack2" "c_ack3" "c_ack4" "s_ack" "s_c1" "s_c2" "s_c3")
-# field="sid"
-# howto_array=("rand_any" "rand_zero")
-# bunch="None"
-# for pkt in "${pkt_array[@]}"; do
-#     for howto in "${howto_array[@]}"; do
-#         echo "********************** we started a new fuzzing experiment *****************************"
-#         run_fuzz $fuzzway $pkt $field $howto $bunch
-#     done
-# done 
-
-# # M1 doesn't have sid_r
-# pkt_array=("hard_reset_s_v2" "c_hello" "s_hello_1" "s_hello_2" "ccs" "c_c1" "c_c2" "c_ack1" "c_ack2" "c_ack3" "c_ack4" "s_ack" "s_c1" "s_c2" "s_c3")
-# field="sid_r"
-# for pkt in "${pkt_array[@]}"; do
-#     for howto in "${howto_array[@]}"; do
-#         echo "********************** we started a new fuzzing experiment *****************************"
-#         run_fuzz $fuzzway $pkt $field $howto $bunch
-#     done
-# done 
-
-
-# we replace using client2's sid_c and sid_s for all acks
-fuzzway="drop"
-pkt="ack"
+fuzzway="restrict"
+pkt="None"
 field="None"
-howto="None" 
+howto="None"
 bunch="None"
+num_replay=10000000
+allowed_control_v1_num=8
+resume_control_v1_num=20000
 echo "********************** we started a new fuzzing experiment *****************************"
-run_fuzz $fuzzway $pkt $field $howto $bunch
+run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num
 
-# we also write the replay actions here
-# fuzzway="replay"
-# pkt_array=("ack_c" "control_v1" "client_restart_v2")
-# field="None"
-# howto="None"
-# bunch="None"
-# num_replay=10000000
-# allowed_control_v1_num=200000
-# resume_control_v1_num=20
-# for pkt in "${pkt_array[@]}"; do
-#     echo "********************** we started a new fuzzing experiment *****************************"
-#     run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num
-# done 
+
+# this means we resume sending control_v1 packets when 20 control_v1 packets have been seen by the mitm program
+resume_control_v1_num=20
+echo "********************** we started a new fuzzing experiment *****************************"
+run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num
+

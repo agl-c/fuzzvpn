@@ -1,4 +1,7 @@
 #! /usr/bin/env python3
+output_dir = '/tcp-fuzzedconfigs/'
+os.makedirs(output_dir, exist_ok=True)
+
 large_value = 2**70
 
 # this python program reads a normal config file and generates various fuzzed malformed config files 
@@ -50,7 +53,7 @@ def modify_variable_in_file(input_file, output_file, variable_name, fuzz_way):
                 outfile.write(f"{parts[0]} {parts[1]} {parts[2]}\n")
 
 input_file = 'tcp-server-raw-fuzz.conf'
-output_dir = '/tcp-fuzzedconfigs/'
+
 
 # numeric values
 for variable_name in ['port', 'keepalive', 'server']:
@@ -120,7 +123,7 @@ def append_variable_in_file(input_file, output_file, variable_name, fuzz_way):
 
 
 input_file = 'tcp-server-raw-fuzz.conf'
-output_dir = '/tcp-fuzzedconfigs/'
+
 
 # numeric values
 for variable_name in ['nice', 'script-security', 'status-version', 'mute', 'verb', 'tran-window', 'key-direction',

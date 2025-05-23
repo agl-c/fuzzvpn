@@ -438,7 +438,7 @@ class TCPProxyProtocol(protocol.Protocol):
 
         num_replay = args.num_replay
         allowed_pkt_num = args.allowed_pkt_num
-        resume_control_v1_num = args.resume_control_v1_num
+        resume_pkt_num = args.resume_pkt_num
 
         fuzzeddata = data 
         pktnum+=1
@@ -590,6 +590,7 @@ class ProxyToServerProtocol(protocol.Protocol):
         global pktnum
 
         allowed_pkt_num = args.allowed_pkt_num
+        resume_pkt_num = args.resume_pkt_num
 
         fuzzeddata = data 
         pktnum+=1
@@ -624,7 +625,7 @@ def main():
     parser.add_argument("--bunch", type=str, help="the selected bunch of messages to reorder", default="None")
     parser.add_argument("--num_replay", type=int, help="the num of replay", default=10000000)
     parser.add_argument("--allowed_pkt_num", type=int, help="the threshold of allowed pkt num", default=200000)
-    parser.add_argument("--resume_control_v1_num", type=int, help="the threshold of control_v1 pkt num to resume sending", default=20000)
+    parser.add_argument("--resume_pkt_num", type=int, help="the threshold of pkt num to resume sending", default=20000)
 
 
     global args 

@@ -1,7 +1,8 @@
 #!/bin/bash
 
-
-directory_name="/tmplogs"
+directory_name="/udp-replay-logs"
+mkdir -p "$directory_name"
+# Ensure the log directory exists
 
 run_fuzz(){
     local fuzzway="$1"
@@ -14,12 +15,12 @@ run_fuzz(){
     local resume_control_v1_num="$8"
 
     # Get the current date and time in the format YYYYMMDD-HHMMSS
-    current_time=$(date "+%Y%m%d-%H%M%S")
+    # current_time=$(date "+%Y%m%d-%H%M%S")
 
     # change to the fuzzcode directory
     cd /fuzzcode
     # Start the fuzz program
-    fuzz_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-udpproxy-$current_time.log"
+    fuzz_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-udpproxy.log"
     # PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" >"$fuzz_log" 2>&1 &
     PYTHONUNBUFFERED=1 ./udp-proxy-manualtest.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" --num_replay="$num_replay" --allowed_control_v1_num="$allowed_control_v1_num" --resume_control_v1_num="$resume_control_v1_num" &
     echo "Running: ./udp-proxy-manualtest.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch --num_replay=$num_replay --allowed_control_v1_num=$allowed_control_v1_num --resume_control_v1_num=$resume_control_v1_num"
@@ -30,13 +31,13 @@ run_fuzz(){
     # we'd better also capture the packet sequence as one of the experiment's results, too
     # we record the packets in and out of the server UDP port 1194
     # server side tcpdump
-    ser_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw-$current_time.pcap"
+    ser_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw.pcap"
     tcpdump -i any udp port 1194 -w "$ser_pcap_file" &
     ser_tcpdump_pid=$!
     echo "server side tcpdump program started as a background process with PID: $ser_tcpdump_pid"
 
     # client side tcpdump, for now we fixed client using port 40000
-    cli_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw-$current_time.pcap"
+    cli_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw.pcap"
     tcpdump -i any udp port 40000 -w "$cli_pcap_file" &
     cli_tcpdump_pid=$!
     echo "client side tcpdump program started as a background process with PID: $cli_tcpdump_pid"
@@ -49,15 +50,15 @@ run_fuzz(){
     # e.g. the raw configuration
     # Start the OpenVPN server
     # since we integrated ASan UBSan with OpenVPN, we should redirect stdout and stderr respectively
-    server_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-server-raw-$current_time"
-    server_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw-$current_time"
+    server_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-server-raw"
+    server_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw"
     openvpn --config server-raw-fuzz.conf 1>"$server_log.log" 2>"$server_err.log" &
     server_pid=$!
     echo "openvpn server started as a background process with PID: $server_pid"
 
     # Start the OpenVPN client
-    client_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-client-raw-$current_time"
-    client_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw-$current_time"
+    client_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
+    client_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
     openvpn --config client1-raw-fuzz.ovpn 1>"$client_log.log" 2>"$client_err.log" &
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
@@ -135,8 +136,8 @@ run_fuzz(){
 
 # we also write the replay actions here
 fuzzway="replay"
-# pkt_array=("ack_c" "control_v1" "client_restart_v2")
-pkt_array=("client_restart_v2")
+pkt_array=("ack_c" "control_v1" "client_restart_v2")
+# pkt_array=("client_restart_v2")
 field="None"
 howto="None"
 bunch="None"

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+directory_name="/tcp-ack-replace"
+# Ensure the log directory exists
+mkdir -p "$directory_name"
+
 
 run_fuzz(){
     local fuzzway="$1"
@@ -7,20 +11,17 @@ run_fuzz(){
     local field="$3"
     local howto="$4"
     local bunch="$5"
-    local num_replay="$6" 
-    local allowed_control_v1_num="$7"
-    local resume_control_v1_num="$8"
 
     # Get the current date and time in the format YYYYMMDD-HHMMSS
-    current_time=$(date "+%Y%m%d-%H%M%S")
+    # current_time=$(date "+%Y%m%d-%H%M%S")
 
     # change to the fuzzcode directory
     cd /fuzzcode
     # Start the fuzz program
-    fuzz_log="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-udpproxy-$current_time.log"
+    fuzz_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-tcpproxy.log"
     # PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" >"$fuzz_log" 2>&1 &
-    PYTHONUNBUFFERED=1 ./udp-proxy-manualtest.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" --num_replay="$num_replay" --allowed_control_v1_num="$allowed_control_v1_num" --resume_control_v1_num="$resume_control_v1_num" &
-    echo "Running: ./udp-proxy-manualtest.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch --num_replay=$num_replay --allowed_control_v1_num=$allowed_control_v1_num --resume_control_v1_num=$resume_control_v1_num"
+    PYTHONUNBUFFERED=1 ./fuzz-tcp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" &
+    echo "Running: ./fuzz-tcp-proxy.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch"
     fuzz_pid=$!
     echo "fuzz $fuzzway $pkt $field program started as a background process with PID: $fuzz_pid"
 
@@ -28,14 +29,14 @@ run_fuzz(){
     # we'd better also capture the packet sequence as one of the experiment's results, too
     # we record the packets in and out of the server UDP port 1194
     # server side tcpdump
-    ser_pcap_file="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw-$current_time.pcap"
-    tcpdump -i any udp port 1194 -w "$ser_pcap_file" &
+    ser_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw.pcap"
+    tcpdump -i any tcp port 1194 -w "$ser_pcap_file" &
     ser_tcpdump_pid=$!
     echo "server side tcpdump program started as a background process with PID: $ser_tcpdump_pid"
 
     # client side tcpdump, for now we fixed client using port 40000
-    cli_pcap_file="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw-$current_time.pcap"
-    tcpdump -i any udp port 40000 -w "$cli_pcap_file" &
+    cli_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw.pcap"
+    tcpdump -i any tcp port 40000 -w "$cli_pcap_file" &
     cli_tcpdump_pid=$!
     echo "client side tcpdump program started as a background process with PID: $cli_tcpdump_pid"
 
@@ -47,16 +48,16 @@ run_fuzz(){
     # e.g. the raw configuration
     # Start the OpenVPN server
     # since we integrated ASan UBSan with OpenVPN, we should redirect stdout and stderr respectively
-    server_log="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-server-raw-$current_time"
-    server_err="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw-$current_time"
-    openvpn --config server-raw-fuzz.conf --verb 9 1>"$server_log.log" 2>"$server_err.log" &
+    server_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-server-raw"
+    server_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw"
+    openvpn --config tcp-server-raw-fuzz.conf --verb 9 1>"$server_log.log" 2>"$server_err.log" &
     server_pid=$!
     echo "openvpn server started as a background process with PID: $server_pid"
 
     # Start the OpenVPN client
-    client_log="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-client-raw-$current_time"
-    client_err="/902runlogs/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw-$current_time"
-    openvpn --config client1-raw-fuzz.ovpn --verb 9 1>"$client_log.log" 2>"$client_err.log" &
+    client_log="/new901run/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
+    client_err="/new901run/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
+    openvpn --config tcp-client1-raw-fuzz.ovpn --verb 9 1>"$client_log.log" 2>"$client_err.log" &
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
 
@@ -74,7 +75,7 @@ run_fuzz(){
     # "
 
     # we created a new container to test the memory and undefined-behavior sanitizer usage
-    # we use the below commands to build the openvpn again: 
+   # we use the below commands to build the openvpn again: 
     # ./configure
     # make  CFLAGS="-Wall -Wno-stringop-truncation -g -O2 -std=c99 -I/usr/include/libnl3 -fsanitize=address -fsanitize=undefined" CXXFLAGS="-fsanitize=address -fsanitize=undefined -g" LDFLAGS="-fsanitize=address -fsanitize=undefined" 
     # && make CFLAGS="-Wall -Wno-stringop-truncation -g -O2 -std=c99 -I/usr/include/libnl3 -fsanitize=address -fsanitize=undefined" CXXFLAGS="-fsanitize=address -fsanitize=undefined -g" LDFLAGS="-fsanitize=address -fsanitize=undefined" install
@@ -83,8 +84,8 @@ run_fuzz(){
     # debugged with "wait" to monitor the program exit status, but gave up due to conflict with father/son process
 
     # set a timer 60s, after that we check the status, kill 4 processes
-    echo "start sleeping for 70s"
-    sleep 70
+    echo "start sleeping for 60s"
+    sleep 60
     echo "end sleep"
     # server process exit check
     if kill -0 $server_pid > /dev/null 2>&1; then
@@ -129,21 +130,29 @@ run_fuzz(){
     echo "All background processes have finished."
 }
 
-fuzzway="restrict"
+
+# we exchange the sid_c and sid_s for all acks
+# fuzzway="replace"
+# pkt_array=("c_ack1" "c_ack2" "c_ack3" "c_ack4" "c_ack5" "s_ack")
+# field="None"
+# howto="sid_exchange" 
+# bunch="None"
+# for pkt in "${pkt_array[@]}"; do
+#     echo "********************** we started a new fuzzing experiment *****************************"
+#     run_fuzz $fuzzway $pkt $field $howto $bunch
+# done 
+
+
+
+# now we run fuzzing code with arguments which select fuzz strategy 
+fuzzway="replace"
 pkt="None"
 field="None"
-howto="None"
 bunch="None"
-num_replay=10000000
-allowed_control_v1_num=8
-resume_control_v1_num=20000
-echo "********************** we started a new fuzzing experiment *****************************"
-run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num
+howto_array=("ack21" "ack32" "ack43" "ack54")
+for howto in "${howto_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+        run_fuzz $fuzzway $pkt $field $howto $bunch
+done
 
 
-# this means we stop sending control_v1 packets when 8 control_v1 packets have been sent
-allowed_control_v1_num=8
-# this means we resume sending control_v1 packets when 20 control_v1 packets have been seen by the mitm program
-resume_control_v1_num=20
-echo "********************** we started a new fuzzing experiment *****************************"
-run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num

@@ -1,7 +1,8 @@
 #!/bin/bash
-log_dir="/udp-dropack-logs"   
+
+directory_name="/tcp-ack"
 # Ensure the log directory exists
-mkdir -p "$log_dir"
+mkdir -p "$directory_name"
 
 run_fuzz(){
     local fuzzway="$1"
@@ -16,10 +17,10 @@ run_fuzz(){
     # change to the fuzzcode directory
     cd /fuzzcode
     # Start the fuzz program
-    fuzz_log="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-udpproxy.log"
+    fuzz_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-$howto-$bunch-tcpproxy.log"
     # PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" >"$fuzz_log" 2>&1 &
-    PYTHONUNBUFFERED=1 ./fuzz-udp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" &
-    echo "Running: ./fuzz-udp-proxy.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch"
+    PYTHONUNBUFFERED=1 ./fuzz-tcp-proxy.py --fuzzway="$fuzzway" --pkt="$pkt" --field="$field" --howto="$howto" --bunch="$bunch" &
+    echo "Running: ./fuzz-tcp-proxy.py --fuzzway=$fuzzway --pkt=$pkt --field=$field --howto=$howto --bunch=$bunch"
     fuzz_pid=$!
     echo "fuzz $fuzzway $pkt $field program started as a background process with PID: $fuzz_pid"
 
@@ -27,14 +28,14 @@ run_fuzz(){
     # we'd better also capture the packet sequence as one of the experiment's results, too
     # we record the packets in and out of the server UDP port 1194
     # server side tcpdump
-    ser_pcap_file="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw.pcap"
-    tcpdump -i any udp port 1194 -w "$ser_pcap_file" &
+    ser_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-ser-raw.pcap"
+    tcpdump -i any tcp port 1194 -w "$ser_pcap_file" &
     ser_tcpdump_pid=$!
     echo "server side tcpdump program started as a background process with PID: $ser_tcpdump_pid"
 
     # client side tcpdump, for now we fixed client using port 40000
-    cli_pcap_file="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw.pcap"
-    tcpdump -i any udp port 40000 -w "$cli_pcap_file" &
+    cli_pcap_file="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-cli-raw.pcap"
+    tcpdump -i any tcp port 40000 -w "$cli_pcap_file" &
     cli_tcpdump_pid=$!
     echo "client side tcpdump program started as a background process with PID: $cli_tcpdump_pid"
 
@@ -46,16 +47,16 @@ run_fuzz(){
     # e.g. the raw configuration
     # Start the OpenVPN server
     # since we integrated ASan UBSan with OpenVPN, we should redirect stdout and stderr respectively
-    server_log="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-server-raw"
-    server_err="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw"
-    openvpn --config server-raw-fuzz.conf --verb 9 1>"$server_log.log" 2>"$server_err.log" &
+    server_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-server-raw"
+    server_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-server-raw"
+    openvpn --config tcp-server-raw-fuzz.conf --verb 9 1>"$server_log.log" 2>"$server_err.log" &
     server_pid=$!
     echo "openvpn server started as a background process with PID: $server_pid"
 
     # Start the OpenVPN client
-    client_log="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
-    client_err="$log_dir/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
-    openvpn --config client1-raw-fuzz.ovpn --verb 9 1>"$client_log.log" 2>"$client_err.log" &
+    client_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
+    client_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
+    openvpn --config tcp-client1-raw-fuzz.ovpn --verb 9 1>"$client_log.log" 2>"$client_err.log" &
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
 
@@ -73,7 +74,7 @@ run_fuzz(){
     # "
 
     # we created a new container to test the memory and undefined-behavior sanitizer usage
-    # we use the below commands to build the openvpn again: 
+   # we use the below commands to build the openvpn again: 
     # ./configure
     # make  CFLAGS="-Wall -Wno-stringop-truncation -g -O2 -std=c99 -I/usr/include/libnl3 -fsanitize=address -fsanitize=undefined" CXXFLAGS="-fsanitize=address -fsanitize=undefined -g" LDFLAGS="-fsanitize=address -fsanitize=undefined" 
     # && make CFLAGS="-Wall -Wno-stringop-truncation -g -O2 -std=c99 -I/usr/include/libnl3 -fsanitize=address -fsanitize=undefined" CXXFLAGS="-fsanitize=address -fsanitize=undefined -g" LDFLAGS="-fsanitize=address -fsanitize=undefined" install
@@ -128,49 +129,75 @@ run_fuzz(){
     echo "All background processes have finished."
 }
 
-
-# fuzzway="1p1f"
-# pkt_array=("hard_reset_c_v2" "hard_reset_s_v2" "c_hello" "s_hello_1" "s_hello_2" "ccs" "c_c1" "c_c2" "c_ack1" "c_ack2" "c_ack3" "c_ack4" "s_ack" "s_c1" "s_c2" "s_c3")
-# field="sid"
-# howto_array=("rand_any" "rand_zero")
-# bunch="None"
-# for pkt in "${pkt_array[@]}"; do
-#     for howto in "${howto_array[@]}"; do
-#         echo "********************** we started a new fuzzing experiment *****************************"
-#         run_fuzz $fuzzway $pkt $field $howto $bunch
-#     done
-# done 
-
-# # M1 doesn't have sid_r
-# pkt_array=("hard_reset_s_v2" "c_hello" "s_hello_1" "s_hello_2" "ccs" "c_c1" "c_c2" "c_ack1" "c_ack2" "c_ack3" "c_ack4" "s_ack" "s_c1" "s_c2" "s_c3")
-# field="sid_r"
-# for pkt in "${pkt_array[@]}"; do
-#     for howto in "${howto_array[@]}"; do
-#         echo "********************** we started a new fuzzing experiment *****************************"
-#         run_fuzz $fuzzway $pkt $field $howto $bunch
-#     done
-# done 
-
-
-# we replace using client2's sid_c and sid_s for all acks
-fuzzway="drop"
-pkt="ack"
-field="None"
-howto="None" 
+# now we run fuzzing code with arguments which select fuzz strategy 
+# only except c_ack1, we can try to remove one of the element in mid array
+# 10, 3210, 4321, 5432; 21
+fuzzway="1p1f"
+# 3210, 4321, 5432; 21
+pkt_array=("c_ack2" "c_ack3" "c_ack4" "c_ack5" "s_ack")
+field="mid_array"
+howto="rm_some" # for now, we remove the second element
+# "large" then we replace the 1st element to be 9
 bunch="None"
-echo "********************** we started a new fuzzing experiment *****************************"
-run_fuzz $fuzzway $pkt $field $howto $bunch
 
-# we also write the replay actions here
-# fuzzway="replay"
-# pkt_array=("ack_c" "control_v1" "client_restart_v2")
-# field="None"
-# howto="None"
-# bunch="None"
-# num_replay=10000000
-# allowed_control_v1_num=200000
-# resume_control_v1_num=20
-# for pkt in "${pkt_array[@]}"; do
-#     echo "********************** we started a new fuzzing experiment *****************************"
-#     run_fuzz $fuzzway $pkt $field $howto $bunch $num_replay $allowed_control_v1_num $resume_control_v1_num
-# done 
+for pkt in "${pkt_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+    run_fuzz $fuzzway $pkt $field $howto $bunch
+done 
+
+# we try howto=large with all the acks
+pkt_array=("c_ack1" "c_ack2" "c_ack3" "c_ack4" "c_ack5" "s_ack")
+howto="large"
+for pkt in "${pkt_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+    run_fuzz $fuzzway $pkt $field $howto $bunch
+done 
+
+# 5 + 6 = 11 min
+
+# firsly, change 1 selected type of pkt and change 1 selected field with selected value
+fuzzway="1p1f"
+pkt_array=("c_ack1" "c_ack2" "c_ack3" "c_ack4" "c_ack5")
+howto_array=("rand_vali" "rand_any" "rand_zero")
+field="mid_array"
+bunch="None"
+
+for pkt in "${pkt_array[@]}"; do
+    for howto in "${howto_array[@]}"; do
+        echo "********************** we started a new fuzzing experiment *****************************"
+        run_fuzz $fuzzway $pkt $field $howto $bunch
+    done
+done 
+
+# 5 * 3 = 15 min 
+
+pkt="s_ack"
+howto_array=("rand_any" "rand_zero")
+for howto in "${howto_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+    run_fuzz $fuzzway $pkt $field $howto $bunch
+done
+
+# 2min 
+# 2+15+11+51+34+36+8+4+4+12+2+6+6+18+18+36+57 = 320 min = 5h20min
+
+fuzzway="replace"
+pkt="None"
+field="None"
+bunch="None"
+howto_array=("ack21" "ack32" "ack43" "ack54")
+for howto in "${howto_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+        run_fuzz $fuzzway $pkt $field $howto $bunch
+done
+
+# we us cli2's sid_c and sid_s  for all acks
+fuzzway="replace"
+pkt_array=("c_ack1" "c_ack2" "c_ack3" "c_ack4" "c_ack5" "s_ack")
+field="None"
+howto="cli2s" 
+bunch="None"
+for pkt in "${pkt_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+    run_fuzz $fuzzway $pkt $field $howto $bunch
+done 

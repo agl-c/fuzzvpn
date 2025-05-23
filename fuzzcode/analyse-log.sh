@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-directory_name="/new901run"
+directory_name="/udp-run-logs" 
 
 client_logs="*-client-raw*.log"
 echo "~~~~~~~~~~~~~~~~~~~ we firstly search for the connection success sentence of client log ~~~~~~~~~~~~~~~~~~~~~~~~~~"

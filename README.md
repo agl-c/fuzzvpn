@@ -1,71 +1,201 @@
 [![DOI](https://zenodo.org/badge/851500012.svg)](https://doi.org/10.5281/zenodo.15476514)
-# use the Dockerfile to build an image openvpn2.6.12
-# the Dockerfile prepares the source code of openvpn2.6.12, as well as the /etc/openvpn directory which stores configuration material
+
+# 1. Environment Setup
+Download the repository first. 
+Our experiments are done on an x86_64 machine with docker version 27.1.1.
+
+```
+# The Dockerfile prepares the source code of OpenVPN 2.6.12, builds it with ASan and UBSan enabled, 
+# and prepares the /etc/openvpn directory with configuration files.
+# Use the Dockerfile to build an image named openvpn2.6.12. (around 5 minutes)
 docker build -t openvpn2.6.12 .
 
-# then create a container with the image openvpn2.6.12
-# map the fuzzcode directory to a directory inside container
-# note the priviledge and network options in the command
-# e.g. user alice downloads the current directory in /home/alice
-docker run --privileged -it -v /home/alice/openvpn2.6.12-docker/fuzzcode:/fuzzcode  --cap-add=NET_ADMIN --device=/dev/net/tun --name fuzzvpn openvpn2.6.12
+# Then create a container using the openvpn2.6.12 image.
+# Map the local fuzzcode directory to /fuzzcode inside the container.
+# Note: --privileged and --net options are necessary for TUN device access.
+# For example, if user "alice" downloaded this repo to /home/alice:
+docker run --privileged -it \
+  -v /home/alice/fuzzvpn/fuzzcode:/fuzzcode \
+  --cap-add=NET_ADMIN \
+  --device=/dev/net/tun \
+  --name fuzzvpn \
+  openvpn2.6.12
+```
 
-# in the terminal of the container fuzzvpn
-# we run usesan.sh to build openvpn with ASan, UBSan, we disable ASLR as a fix of ASan bug
-cd /fuzzcode
-./usesan.sh
-# now we have the built openvpn
 
-# for each of TCP and UDP mode, there are mainly two python files for the packet fuzzing functionalities, and the configs directory serves for malformed configuration part
-# fuzz-udp-proxy.py and fuzz-tcp-proxy.py  serve for 1p1f, reorder, replace, drop strategies
-# udp-proxy-manualtest.py and tcp-proxy-manualtest.py serve for replay, restrict strategies
-# we use pip to install some packages before running the python file
-pip install twisted
-pip install scapy
+**Ensure you use the correct IP address!!** 
 
-# run_fuzzing.sh is the script organizing experiments using fuzz-udp-proxy.py 
-# replay.sh is the script to test replay part
-# restrict-controlv1.sh is the script to test when restricting the number of control_v1 packets sent
-# we have corresponding scripts for TCP mode in the tcp-scripts directory
+Take UDP mode for example, for TCP mode, the similar things should be checked.
 
-# below, we explain how to use the UDP mode program as an example
+```
+# the user should ensure the IP addresses in fuzz-udp-proxy.py and udp-proxy-manualtest.py are correct
+# in our experiment environment, the IP address in those two python files are
+# client_ip = "172.17.0.4"
+# server_ip = "172.17.0.4"
+# the user should change them to suit the experiment environment: the IP address can be found with ifconfig command, net-tools package should provide the command 
+# in the client configuration file, the IP address of server should also be updated
+# in /etc/openvpn, the client1-raw-fuzz.ovpn has "remote 172.17.0.4 50000"
+# the user should change "172.17.0.4" to suit the experiment environment
+```
+
+
+# 2. (Functional) active learning and construct the MSC. 
+
+Take UDP mode for example. Go to the udp-scripts directory, and run the script.
+
+```
 cd udp-scripts
-# before runing the script, the user should ensure the IP addresses in fuzz-udp-proxy.py and udp-proxy-manualtest.py are correct
-# in our experiment setting, the IP address in those two python files are
-# client_ip = "172.17.0.3"
-# server_ip = "172.17.0.3"
-# the user should change them to suit their experiment environment when testing
-# the IP address can be found with ifconfig command, net-tools package should provide the command 
+./active-learning.sh 
+```
 
-# also, in the client configuration file, the IP address of server should be updated
-# for now, in /etc/openvpn, the client1-raw-fuzz.ovpn has "remote 172.17.0.3 50000"
-# the user should change "172.17.0.3" to be the correct IP address in his/her testing environment
+Then you will find in the /udp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown on Paper Page 6). 
 
+E.g. restrict-1-client-raw.log shows the behaviors of the client side when only one control_v1 packet is allowed to be exchanged. 
 
-# before running the script, the user should prepare a directory to store logs generated in the script
-# for now, the log directory in run_fuzzing.sh is /new901run
-# and the log directory in  replay.sh and restrict-controlv1.sh is /902runlogs
-# the user can replace it in the script with his/her own directory
-# then the user can run the script and store running log with the command below 
-./run_fuzzing.sh | tee /new901run/run_fuzzing.out
+For TCP mode, similarly,
 
-# after the script finishes running, the user can run other scripts, too
-# the user can change parameters of replay and restrict part, details in the script
-./replay.sh | tee /902runlogs/replay.out
-# after the script finishes running
-./restrict-controlv1.sh | tee /902runlogs/restrict-controlv1.out
+```
+cd tcp-scripts
+./active-learning.sh 
+```
 
-# we provide a script to help analyse logs
-# the user have to update the directory_name there, for now in the script directory_name="/new901run"
-./analyse_logs.sh 
+Then you will find in the /tcp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown on Paper Page 17 ). 
 
-# in the configs directory, malformed configuration files are generated
-# fuzzconfig.py generates the malformed configuration files for both client and server
-# the user should prepare a directory to store them, for now in fuzzconfig.py, output_dir = '/fuzzedconfigs/'
+# 3. (Functional) fuzzing with attack strategies in Section 4.2.  
+
+**(1)Evaluate the malformed configruation file part** 
+
+configs directory includes the malformed configuration part.
+```
+# in configs directory, fuzzconfig.py generates the malformed configuration files for both client and server for UDP mode
+# for now in fuzzconfig.py, the output directory is '/fuzzedconfigs/'  
 cd configs
-./fuzzconfig.py
-# after the python program finishes running, the user can find all the malformed configuration files generated in /fuzzedconfigs
-# testconfig.sh run the malformed configuration file one by one, and the output logs of each run can be found as .log files in /fuzzedconfigs
+./fuzzconfig.py 
+# after the program finishes running, the user can find all the malformed configuration files generated in /fuzzedconfigs
+# testconfig.sh run the malformed configuration file one by one, and the output log files can be found as .log files in /fuzzedconfigs
 ./testconfig.sh
+# The user can use analyse-log.sh to detect suspicous behavior, as well as manually look into individual log files to confirm any problems
+./analyse-log.sh
+# for TCP mode, the corresponding program is tcp-fuzzconfig.py and tcp-testconfig.py
+./tcp-fuzzconfig.py
+./tcp-testconfig.sh
+./tcp-analyse-log.sh
+```
+We give the instructions on detecting the port validation problem (Paper Section 5.3 Port Validation).
+
+The user can follow this example to find other improperly validated configuration options (Paper Appendix Table 5.)
+in /fuzzedconfigs.
+``` 
+cd /fuzzedconfigs
+vim server-raw-port-malport.log
+```
+And the line "UDPv4 link local (bound): [AF_INET][undef]:4464" could be found, implying that when we set an invalid port 70000 exceeding 65535, the program used actually the port number 4464 which is the lowest 16 bits of 70000.
 
 
+**(2)Evalute the packet fuzzing part**
 
+This part include strategies like replay packets; field-level modification; reordering packets; and acknowledgment-related attacks.
+
+For TCP and UDP mode respectively, there are two Python files for the packet fuzzing functionalities: 
+udp-proxy-manualtest.py and tcp-proxy-manualtest.py for replay, restrict packet-number strategies; 
+fuzz-udp-proxy.py and fuzz-tcp-proxy.py for 1p1f field-level modification, reorder, replace, drop and acknowledgment-related strategies.
+
+The two directories tcp-scripts and udp-scripts include the experiment running scripts for TCP and UDP respecitively,
+e.g. in udp-scripts directory, run_fuzzing.sh organizes experiments (for 1p1f field-level modification, reorder, replace, drop and acknowledgment-related strategies) using fuzz-udp-proxy.py
+
+replay.sh and restrict-controlv1.sh use udp-proxy-manualtest.py to test the replay attacks and when restricting the number of control_v1 packets sent.
+
+The user can change in the script the directory to store experiment logs: for now, the log directory in run_fuzzing.sh is "/udp-run-logs", the log directory in replay.sh is "/udp-replay-logs" and the log directory in restrict-controlv1.sh is "/udp-restrict-logs". 
+
+The user can change fuzzing parameters in the script if they want, e.g. replay packet number.
+
+The user can use analyse-log.sh to detect potential bugs, but the current log directory in the script is only "/udp-run-logs", and the user should change it to the corresponding directory if needed (e.g."/udp-restrict-logs" and "/udp-replay-logs").
+
+Below we explain how to run the code for UDP mode, for TCP mode, the user can follow the similar process. 
+```
+cd udp-scripts
+./replay.sh
+./restrict.sh
+./run_fuzzing.sh
+cd /fuzzcode 
+# The user may update the directory_name="/udp-run-logs" in analyse-log.sh to other directories (e.g."/udp-restrict-logs" and "/udp-replay-logs")
+./analyse-log.sh
+# the user can also go to /udp-replay-logs , /udp-restrict-logs and /udp-run-logs to look into individual experiment logs to detect the problems
+```
+
+# 4. (Results reproducible) find the attacks we reported in the paper (Section 5)
+(1) To find the malformed configuration validation bugs (Paper Section 5.3), follow the 3.(1) instructions above.
+
+(2) To find the new DoS attacks (Paper Section 5.2), take the UDP mode for example
+```
+cd udp-scripts
+./replay.sh
+```
+And then go to /udp-replay-logs, take replay control_v1 packets for example, 
+```
+cd /udp-replay-logs
+vim replay-control_v1-None-None-None-server-raw.log
+```
+And the lines "TLS Error: TLS key negotiation failed to occur within 60 seconds (check your network connectivity)... TLS Error: TLS handshake failed" showed that the Sever connection cannot succeed. 
+
+As to tls-auth mode, use 
+```
+cd udp-scripts
+./tlsauth-replay.sh
+```
+And then go to /tlsauth-udp-replay-logs, take replay control_v1 packets for example, 
+```
+cd /tlsauth-udp-replay-logs
+vim replay-control_v1-None-None-None-server-raw.log
+```
+And although we can find the warning sentences, but the connection still failed. 
+Check the corresponding replay-control_v1-None-None-None-client-raw.log, we can also see "TLS Error: TLS key negotiation failed to occur within 60 seconds (check your network connectivity)... TLS Error: TLS handshake failed".
+
+
+(3) To find that previous DoS attack fixed (Paper Appendix E.1), take the UDP mode for example
+```
+cd /udp-replay-logs
+vim replay-client_restart_v2-None-None-None-server-raw.log
+```
+And the line "Connection Attempt Note: --connect-freq-initial 100 10 rate limit exceeded, dropping initial handshake packets for the next 10 seconds" showed that a patch of rate limiting is implemented and so that the connection can succeed. 
+
+(4) To find the server prematurely sends data (Paper Section 5.4) problem
+Take UDP mode for example. The experiments are the two discussed in Section 5.4. 
+```
+cd /udp-scripts
+./restrict.sh
+```
+The logs are stored in /udp-restrict-logs
+```
+cd /udp-restrict-logs
+vim restrict-8-20000-client-raw.log 
+vim restrict-8-20000-server-raw.log
+# the 2 log files show that if we drop the M17 packets from the client as well as the reply packets from the server, then the client will face connection failure while the server can keep sending P_DATA_V2 packets.
+vim restrict-8-20-client-raw.log 
+# the 2 log files show that in the second attack, when we resume packet sending, although connection can succeed but the client is not aware that it actually dropped data that was sent prematurely by the server.
+# from the client log file we can see the data packets are dropped (UDPv4 READ [72] from [AF_INET]172.17.0.4:50000: P_DATA_V2 kid=0 DATA 00000000 00000157 [more...]... Key [AF_INET]172.17.0.4:50000 [0] not initialized (yet), dropping packet.) 
+```
+
+(5) To find the ACK-related attacks (Paper Section 5.5)
+Take TCP mode for example.
+```
+cd tcp-scripts
+./tcp-ack-fuzz.sh
+```
+Then the logs are stored inside /tcp-ack directory. 
+
+Take the attack "(1) changing the Message Packet-ID Array of M_12 (or M_11 or M_7 or M_5) in rand_zero way;" (Paper Section 5.5 last paragraph.) for example.
+```
+cd /tcp-ack
+vim 1p1f-s_ack-mid_array-rand_zero-None-server-raw.log
+```
+And in the file there is no sever connection success sentence "Peer Connection Initiated with [Client Address]", so that we know the attack blocked the connection.
+
+In comparison, if the user did the same experiments with UDP mode.
+```
+cd udp-scripts
+./ack-fuzzing.sh
+cd /udp-ack-logs
+vim 1p1f-s_ack-mid_array-rand_zero-None-server-raw.log
+```
+The user will find the sever connection success sentence "Peer Connection Initiated with [Client Address]", so that we know UDP mode is robust to the attack.
