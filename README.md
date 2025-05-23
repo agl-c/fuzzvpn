@@ -80,6 +80,7 @@ cd configs
 ./testconfig.sh
 # The user can use analyse-log.sh to detect suspicious behavior, as well as manually look into individual log files to confirm any problems
 ./analyse-log.sh
+
 # for TCP mode, the corresponding program is tcp-fuzzconfig.py and tcp-testconfig.py
 ./tcp-fuzzconfig.py
 ./tcp-testconfig.sh
@@ -174,10 +175,13 @@ The logs are stored in /udp-restrict-logs
 cd /udp-restrict-logs
 vim restrict-8-20000-client-raw.log 
 vim restrict-8-20000-server-raw.log
-# The 2 log files show that if we drop the M17 packets from the client as well as the reply packets from the server, then the client will face connection failure while the server can keep sending P_DATA_V2 packets.
+# The 2 log files show that if we drop the M17 packets from the client as well as the reply packets from the server, then the client will face connection failure while the server can keep sending P_DATA_V2 packets, 
+# since in the server's log we can find server connection success sentence “Peer Connection Initiated with [Client Address]" and the data packets sent by the server, 
+# but cannot find in the client's log the client connection success sentence "Initialization Sequence Completed" 
+
 vim restrict-8-20-client-raw.log 
-# The 2 log files show that in the second attack, when we resume packet sending, although the connection can succeed, the client is not aware that it actually dropped data that was sent prematurely by the server.
-# From the client log file we can see the data packets are dropped (UDPv4 READ [72] from [AF_INET]172.17.0.4:50000: P_DATA_V2 kid=0 DATA 00000000 00000157 [more...]... Key [AF_INET]172.17.0.4:50000 [0] not initialized (yet), dropping packet.) 
+# The log file show that in the second attack, when we resume packet sending, although the connection can succeed, the client is not aware that it actually dropped data that was sent prematurely by the server, 
+# since from the client log file we can see the data packets are dropped: (UDPv4 READ [72] from [AF_INET]172.17.0.4:50000: P_DATA_V2 kid=0 DATA 00000000 00000157 [more...]... Key [AF_INET]172.17.0.4:50000 [0] not initialized (yet), dropping packet.) 
 ```
 
 (5) To find the ACK-related attacks (paper Section 5.5)
