@@ -381,4 +381,36 @@ done
 # 2min 
 # 2+15+11+51+34+36+8+4+4+12+2+6+6+18+18+36+57 = 320 min = 5h20min
 
-# reorder and replace experiments to be added from the run script of udp mode 
+
+# we us cli2's sid_c and sid_s  for all acks
+fuzzway="replace"
+pkt_array=("c_ack1" "c_ack2" "c_ack3" "c_ack4" "c_ack5" "s_ack")
+field="None"
+howto="cli2s" 
+bunch="None"
+for pkt in "${pkt_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+    run_fuzz $fuzzway $pkt $field $howto $bunch
+done 
+
+
+fuzzway="replace"
+pkt="None"
+field="None"
+bunch="None"
+howto_array=("ack21" "ack32" "ack43" "ack54")
+for howto in "${howto_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+        run_fuzz $fuzzway $pkt $field $howto $bunch
+done
+
+fuzzway="reorder"
+pkt="None"
+field="None"
+howto="None"
+bunch_array=("s1" "c1" "s2")
+# bunch_array=("s2")
+for bunch in "${bunch_array[@]}"; do
+    echo "********************** we started a new fuzzing experiment *****************************"
+        run_fuzz $fuzzway $pkt $field $howto $bunch
+done

@@ -55,8 +55,8 @@ run_fuzz(){
     echo "openvpn server started as a background process with PID: $server_pid"
 
     # Start the OpenVPN client
-    client_log="/new901run/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
-    client_err="/new901run/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
+    client_log="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-client-raw"
+    client_err="$directory_name/$fuzzway-$pkt-$field-$howto-$bunch-err-client-raw"
     openvpn --config tcp-client1-raw-fuzz.ovpn --verb 9 1>"$client_log.log" 2>"$client_err.log" &
     client_pid=$!
     echo "openvpn client started as a background process with PID: $client_pid"
