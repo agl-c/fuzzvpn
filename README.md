@@ -46,6 +46,7 @@ Take UDP mode for example, for TCP mode, similar things should be checked.
 # e.g. the client1-raw-fuzz.ovpn has the line "remote 172.17.0.4 50000", the user should change "172.17.0.4" to be the correct IP address found in the experiment environment
 # We provide a script in fuzzcode/ to replace the IP in config files to be the specified IP of the user 
 # assume the the user wants to use the IP 172.17.0.4, execute the script below inside the container
+cd /fuzzcode 
 ./update_config_ip.sh 172.17.0.4 
 
 ```
