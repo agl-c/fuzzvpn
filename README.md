@@ -54,9 +54,9 @@ cd udp-scripts
 ./active-learning.sh 
 ```
 
-The script takes around 10 min to finishe, then you will find in the /udp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown in the paper in Figure 2, page 6). 
+The script takes around 10 min to finishe, then you will find in the /udp-active-learning-logs directory all the logs, and the detailed client or server behavior is manually analyzed from the client/server logs to construct the MSC (shown in the paper in Figure 2, page 6). 
 
-E.g. restrict-1-client-raw.log shows the behaviors of the client side when only one control_v1 packet is allowed to be exchanged. 
+E.g. restrict-1-client-raw.log shows the behaviors of the client side when only one control_v1 packet is allowed to be exchanged. Looking into this log file, we will find the sentences showing the behavior "TCPv4_CLIENT WRITE [14] to [AF_INET]172.17.0.5:50000: P_CONTROL_HARD_RESET_CLIENT_V2 kid=0 sid=f3447239 db694d12 [ ] pid=0 DATA", i.e., the client sends the above content in the first openvpn packet to the server. Analysing the client and server logs when different numbers of packets are allowed to be transmitted allow the user to know the inner behavior of both protocol sides. 
 
 For TCP mode, similarly,
 
@@ -65,7 +65,7 @@ cd tcp-scripts
 ./active-learning.sh 
 ```
 
-Then you will find in the /tcp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown in the paper in Figure 17, pPage 17 ). 
+Then you will find in the /tcp-active-learning-logs directory all the logs, and the detailed client or server behavior is analyzed from the client/server logs to construct the MSC (shown in the paper in Figure 17, Page 17 ). For example, the file restrict-3-client-raw.log means the client side logs when we only allow the first 3 packets to be transmitted between the 2 parties, and we can infer the content of ciphertext in the third openvpn packet from the log sentences " SSL state (connect): before SSL initialization ... SSL state (connect): SSLv3/TLS write client hello", i.e., TLS client hello messages. These logging information provides a way to peek into the semantics of the ciphertext part of the Openvpn packets. 
 
 # 3. (Functional) fuzzing with attack strategies in Section 4.2.  
 
@@ -108,9 +108,10 @@ udp-proxy-manualtest.py and tcp-proxy-manualtest.py for replay, restrict packet-
 fuzz-udp-proxy.py and fuzz-tcp-proxy.py for 1p1f field-level modification, reorder, replace, drop and acknowledgment-related strategies.
 
 The two directories tcp-scripts and udp-scripts include the experiment running scripts for TCP and UDP respectively,
-e.g. in udp-scripts directory, run_fuzzing.sh organizes experiments (for 1p1f field-level modification, reorder, replace, drop ,and acknowledgment-related strategies) using fuzz-udp-proxy.py
+e.g. in udp-scripts directory, run_fuzzing.sh organizes almost all the experiments (for 1p1f field-level modification, reorder, replace, drop ,and acknowledgment-related strategies) using fuzz-udp-proxy.py, besides,
+replay.sh and restrict-controlv1.sh use udp-proxy-manualtest.py to test the replay attacks and when restricting the number of control_v1 packets sent. 
 
-replay.sh and restrict-controlv1.sh use udp-proxy-manualtest.py to test the replay attacks and when restricting the number of control_v1 packets sent.
+The other scripts are for a small set of experiments if the user wants to focus on a specific type of attacks. The user is free to reuse those scripts and we attach a comment summary of their focus in the beginging of each scripts.
 
 The user can change in the script the directory to store experiment logs: for now, the log directory in run_fuzzing.sh is "/udp-run-logs", the log directory in replay.sh is "/udp-replay-logs" and the log directory in restrict-controlv1.sh is "/udp-restrict-logs". 
 
@@ -153,7 +154,7 @@ cd udp-scripts
 And then go to /tlsauth-udp-replay-logs, take replay control_v1 packets for example, 
 ```
 cd /tlsauth-udp-replay-logs
-vim replay-control_v1-None-None-None-server-raw.log
+vim replay-control_v1-None-None-None-server-tlsauth.log
 ```
 And although we can find the warning sentences, the connection still failed. 
 Check the corresponding replay-control_v1-None-None-None-client-raw.log, we can also see "TLS Error: TLS key negotiation failed to occur within 60 seconds (check your network connectivity)... TLS Error: TLS handshake failed".
