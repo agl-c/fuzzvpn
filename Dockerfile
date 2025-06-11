@@ -27,7 +27,8 @@ RUN apt update && \
     netcat \
     iperf3 \
     socat \
-    net-tools
+    net-tools \
+    python3-docutils
 
 RUN pip install twisted scapy
 
