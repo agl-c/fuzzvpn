@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy to drop ack packets 
 log_dir="/udp-dropack-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

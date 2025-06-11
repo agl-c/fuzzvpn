@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to fuzz the OpenVPN TCP packets by reordering the control packets 
 directory_name="/tcp-reorder"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

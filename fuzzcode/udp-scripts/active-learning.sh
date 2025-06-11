@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy with active learning to construct the MSC 
 log_dir="/udp-active-learning-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

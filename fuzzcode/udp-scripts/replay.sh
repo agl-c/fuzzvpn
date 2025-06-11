@@ -1,4 +1,7 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy focusing on replaying packets without tls-auth or tls-crypt 
+# The replay experiment may take up a lot of space, and in our experiment we observe the logging directory is 2.3GB 
+# This script takes around 5 minutes to finish 
 
 directory_name="/udp-replay-logs"
 mkdir -p "$directory_name"

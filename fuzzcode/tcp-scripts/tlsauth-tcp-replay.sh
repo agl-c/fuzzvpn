@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to run fuzzing replay experiments on OpenVPN TCP with tlsauth 
 
 directory_name="/tlsauth-tcp-replaylogs"
 # Ensure the log directory exists

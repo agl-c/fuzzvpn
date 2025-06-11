@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script measures the time taken to establish a VPN connection using OpenVPN. 
 directory="/1207"
 start_time=$(date +%s.%N)
 openvpn --config /etc/openvpn/tcp-client2-raw.ovpn > $directory/tcp-cli-$start_time.log 2>&1 &

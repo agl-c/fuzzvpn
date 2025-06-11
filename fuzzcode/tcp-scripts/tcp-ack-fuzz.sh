@@ -1,5 +1,7 @@
 #!/bin/bash
-
+# This script is used to fuzz the OpenVPN TCP ACK packets 
+# It takes around 40 minute to run all the fuzzing experiments 
+# and the logging directory take around 11 MB of disk space 
 directory_name="/tcp-ack"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

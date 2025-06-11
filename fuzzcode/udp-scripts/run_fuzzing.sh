@@ -1,4 +1,9 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy combining different fuzzing strategies, 
+# except the replay and restrict strategies that are in other scripts 
+# Every single fuzzing experiment will run for 60 seconds, 
+# so in total, it will take around 5 hour for the script to complete.
+# And the looging directory may take around 1GB space 
 log_dir="/udp-run-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

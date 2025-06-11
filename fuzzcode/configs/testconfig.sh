@@ -1,4 +1,9 @@
 #!/bin/bash
+# This script is designed to test OpenVPN configurations by running them in a controlled manner. 
+# It processes all .conf and .ovpn files in the /fuzzedconfigs directory, runs them with OpenVPN, and logs the output. 
+# The estimated time for each configuration is 3 seconds, after which the process is killed to prevent long-running instances.
+# So in total, it will take around 5s * 141(files) = 705 seconds or approximately 12 minutes for the script to complete. 
+# The logging directory takes around 1.4MB of disk space. 
 
 cd /etc/openvpn
 # find /fuzzedconfigs -type f -name "*.conf" | xargs -I {} openvpn --config {}

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to fuzz the OpenVPN TCP ACK packets with a replace strategy, replacing the older ACK packets with new ones. 
 directory_name="/tcp-ack-replace"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

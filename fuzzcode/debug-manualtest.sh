@@ -1,4 +1,7 @@
 #!/bin/bash
+# This script is used to run only one specific fuzzing experiment on OpenVPN with UDP proxy. 
+# The code can be used to debug one specific fuzzing process with the user specified parameters 
+
 # PYTHONUNBUFFERED=1 ./fuzz-tcp-proxy.py 
 # --fuzzway=none --pkt=none --field=none >"/822logs/fuzzout.log" 2>&1 &
 

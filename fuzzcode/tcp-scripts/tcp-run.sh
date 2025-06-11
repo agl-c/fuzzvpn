@@ -1,5 +1,7 @@
 #!/bin/bash
-
+# This script is used to run fuzzing experiments for TCP packets in OpenVPN, combining various fuzzing strategies and packet fields. 
+# except the replay and restrict strategies that are in other scripts  
+# The script takes around 5.5 hours to complete, and the logging directory takes around 600MB 
 directory_name="/tcp-1p1f"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

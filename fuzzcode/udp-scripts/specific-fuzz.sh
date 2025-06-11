@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy focusing on specific fields like mid_array, sid and sid_r 
 
 run_fuzz(){
     local fuzzway="$1"

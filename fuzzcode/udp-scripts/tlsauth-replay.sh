@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to run fuzzing experiments on OpenVPN with TLS authentication using replay. 
 directory_name="/tlsauth-udp-replay-logs"
 mkdir -p "$directory_name"
 # Ensure the log directory exists

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to run suspicious vulnerable experiments on the OpenVPN UDP proxy focusing on ack packets 
 
 run_fuzz(){
     local fuzzway="$1"

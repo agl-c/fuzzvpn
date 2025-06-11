@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy replacing the original sid_c and sid_r with the client2's sid_c and sid_s for all acks.
 log_dir="/udp-ackcli2-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

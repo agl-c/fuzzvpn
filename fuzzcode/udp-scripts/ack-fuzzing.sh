@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy focusing on fuzzing the ack packets 
 log_dir="/udp-ack-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

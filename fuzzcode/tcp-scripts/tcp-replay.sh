@@ -1,6 +1,6 @@
 #!/bin/bash
-
-
+# This script is used to fuzz the OpenVPN TCP packets with the replay method 
+# The script takes about 5 minutes to run and the logging directory takes around 350KB 
 directory_name="/tcp-replay-logs"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

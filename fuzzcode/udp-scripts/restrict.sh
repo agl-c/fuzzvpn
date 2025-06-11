@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy focusing on restricting Control_v1 packets and resuming sending Control_v1 packets 
+# The script takes around 2 minutes to finish 
 log_dir="/udp-restrict-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

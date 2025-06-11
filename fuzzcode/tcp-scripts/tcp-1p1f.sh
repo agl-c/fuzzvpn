@@ -1,5 +1,8 @@
 #!/bin/bash
-
+# This script is used to fuzz OpenVPN TCP proxy with 1 packet and 1 field at a time
+# focusing on fields, such as op, mpid, tls_ctype, tls_v, tls_htype, hs_v, sid, sid_r, mid_array, etc.
+# It will run the fuzzing code with different combinations of packet types and field modifications.
+# It will also capture the logs and packet captures for analysis. 
 directory_name="/tcp-1p1f"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

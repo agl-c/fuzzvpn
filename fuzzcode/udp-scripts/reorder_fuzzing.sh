@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to run fuzzing experiments on the OpenVPN UDP proxy focusing on the reordering of Control_v1 packets 
 log_dir="/udp-reorder-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to analyse the OpenVPN logs after fuzzing experiments, searching for errors, warnings and connection success messages.
 
 directory_name="/udp-run-logs" 
 

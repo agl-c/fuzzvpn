@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script is used to fuzz the OpenVPN TCP packets with the restrict method and resuming method 
+# The script takes around 2 minutes to finish  
 log_dir="/tcp-restrict-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

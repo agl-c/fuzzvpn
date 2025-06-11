@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This script is used to run fuzzing experiments on the OpenVPN TCP proxy replacing the original sid_c and sid_r with the client2's sid_c and sid_s for all acks.
 directory_name="/tcp-ack-replace"
 # Ensure the log directory exists
 mkdir -p "$directory_name"

@@ -1,4 +1,5 @@
 #!/bin/bash
+# This script is used to run active learning experiments for TCP with OpenVPN.
 log_dir="/tcp-active-learning-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"

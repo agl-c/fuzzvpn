@@ -1,4 +1,6 @@
 #!/bin/bash
+# This script is used to fuzz OpenVPN UDP proxy with 1 packet and 1 field at a time
+# focusing on fields, such as opcode, mpid, tls_ctype, tls_v, tls_htype, hs_v, ccs, rlen, hslen, tls_slen, tls_cslen, tls_cmlen, tls_extlen
 log_dir="/udp-1p1f-otherfields-logs"   
 # Ensure the log directory exists
 mkdir -p "$log_dir"
