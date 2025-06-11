@@ -35,13 +35,19 @@ Take UDP mode for example, for TCP mode, similar things should be checked.
 # client_ip = "172.17.0.4"
 # server_ip = "172.17.0.4"
 # The user should change them to suit the experiment environment: the IP address can be found with ifconfig command, net-tools package should provide the command 
-# since the above python files are in /fuzzcode directory that is mapped with the volumne method, the user can directly edit them outside the container and the changes will be reflected inside the container
+# We provide a script in fuzzcode/ to replace the IP in python files to be the specified IP of the user. 
+# since the python files are in /fuzzcode directory that is mapped with the volumne method, the changes will be reflected inside the container
+# assume the the user wants to use the IP 172.17.0.4, execute the script below outside the container 
+./update_py_ip.sh 172.17.0.4
 
-# Besides, the IP address of the server should also be updated in each of the client configuration files. /etc/openvpn stores all the client and server configuration files 
+
+# Besides, the IP address of the server should also be updated in client configuration files. Inside the container, /etc/openvpn stores all the client and server configuration files 
 # in /etc/openvpn, all the client configuration files are ended in .ovpn, so the user should change the IP address in each of the files, 
-# e.g. the client1-raw-fuzz.ovpn has the line "remote 172.17.0.4 50000"
-# the user should change "172.17.0.4" to be the correct IP address found in the experiment environment
-# the user can edit the above configuration files under /etc/openvpn directory inside the container
+# e.g. the client1-raw-fuzz.ovpn has the line "remote 172.17.0.4 50000", the user should change "172.17.0.4" to be the correct IP address found in the experiment environment
+# We provide a script in fuzzcode/ to replace the IP in config files to be the specified IP of the user 
+# assume the the user wants to use the IP 172.17.0.4, execute the script below inside the container
+./update_config_ip.sh 172.17.0.4 
+
 ```
 
 
