@@ -1,5 +1,7 @@
 [![DOI](https://zenodo.org/badge/851500012.svg)](https://doi.org/10.5281/zenodo.15476514)
 
+This repository is the artifact for the paper FUZZVPN: Finding Vulnerabilities in OpenVPN in USENIX WOOT 2025 conference. It includes the environment setup instructions with Dockerfile provided, the main functional component code, the scripts to execute the experiments, as well as instructions on how to reproduce the findings reported in the paper. 
+
 # 1. Environment Setup
 Download the repository first. 
 Our experiments are done on an x86_64 machine with Docker version 27.1.1.
@@ -208,3 +210,6 @@ vim 1p1f-s_ack-mid_array-rand_zero-None-server-raw.log
 ```
 The user will find the server connection success sentence "Peer Connection Initiated with [Client Address]", so that we know UDP mode is robust to the attack.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
