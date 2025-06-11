@@ -1,6 +1,10 @@
 [![DOI](https://zenodo.org/badge/851500012.svg)](https://doi.org/10.5281/zenodo.15476514)
 
-This repository is the artifact for the paper FUZZVPN: Finding Vulnerabilities in OpenVPN in USENIX WOOT 2025 conference. It includes the environment setup instructions with Dockerfile provided, the main functional component code, the scripts to execute the experiments, as well as instructions on how to reproduce the findings reported in the paper. 
+This repository is the artifact for the paper FUZZVPN: Finding Vulnerabilities in OpenVPN in USENIX WOOT 2025 conference. 
+
+It includes the environment setup instructions with Dockerfile provided, the main functional component code, the scripts to execute the experiments, as well as instructions on how to reproduce the findings reported in the paper. 
+
+It also includes the unmodified OpenVPN 2.6.12 version source code as the fuzzing target. And we have prepared the configuration files to run OpenVPN in the artifact.
 
 # 1. Environment Setup
 Download the repository first. 
