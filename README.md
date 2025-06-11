@@ -89,7 +89,8 @@ configs directory includes the malformed configuration part.
 cd configs
 ./fuzzconfig.py 
 # After the program finishes running, the user can find all the malformed configuration files generated in /fuzzedconfigs
-# testconfig.sh run the malformed configuration files one by one, and the output log files can be found as .log files in /fuzzedconfigs
+# testconfig.sh run the malformed configuration files one by one, and the output log files can be found as .log files in /fuzzedconfigs. 
+# it takes around 12 minutes to finish 
 ./testconfig.sh
 # The user can use analyse-log.sh to detect suspicious behavior, as well as manually look into individual log files to confirm any problems
 ./analyse-log.sh
@@ -133,8 +134,10 @@ The user can use analyse-log.sh to detect potential bugs, but the current log di
 Below we explain how to run the code for UDP mode, for TCP mode, the user can follow a similar process. 
 ```
 cd udp-scripts
+# the replay.sh takes around 5 minutes and may generate 2.3GB logs as observed in our experiments
 ./replay.sh
 ./restrict.sh
+# the run_fuzzing.sh takes around 5 hours to finish and may generate 1GB logs 
 ./run_fuzzing.sh
 cd /fuzzcode 
 # The user may update the directory_name="/udp-run-logs" in analyse-log.sh to other directories (e.g."/udp-restrict-logs" and "/udp-replay-logs")
@@ -202,6 +205,7 @@ vim restrict-8-20-client-raw.log
 Take TCP mode for example.
 ```
 cd tcp-scripts
+# it takes around 40 minutes to finish running and may generate 11MB logs 
 ./tcp-ack-fuzz.sh
 ```
 Then the logs are stored inside /tcp-ack directory. 
@@ -216,6 +220,7 @@ And in the file, there is no server connection success sentence "Peer Connection
 In comparison, if the user did the same experiments with UDP mode.
 ```
 cd udp-scripts
+# it takes around 33 minutes to finish running 
 ./ack-fuzzing.sh
 cd /udp-ack-logs
 vim 1p1f-s_ack-mid_array-rand_zero-None-server-raw.log
